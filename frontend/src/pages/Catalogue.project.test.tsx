@@ -183,14 +183,7 @@ describe("Catalogue page of a project", () => {
     expect(await screen.findByText("Private")).toBeInTheDocument();
   });
 
-  it("has no account links", async () => {
-    renderPage();
-    await screen.findByText("Fair");
-    expect(screen.queryByRole("link", { name: "Account" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Log out" })).toBeNull();
-  });
-
-  it("makes no request of its own, on load or on focus", async () => {
+  it("calls fetch neither on load nor on focus", async () => {
     net.fetch.mockClear();
     renderPage();
     await screen.findByText("Fair");

@@ -14,7 +14,10 @@
 # - docker stop reaches devpi-server (SIGTERM, not a SIGKILL after the grace period), also while the start
 #   is still setting up, and a server that exits at once stops the start at once, not after the 60 s
 #   readiness wait;
-# - an empty bind-mounted data directory is initialised on the first start.
+# - an empty bind-mounted data directory is initialised on the first start;
+# - devpi-server, and the start once it has handed over, run as a user other than root, also on a volume
+#   whose files are all root's, as the image that ran as root left them, which keeps its index and password;
+# - DEVPI_PORT moves the server to another port, and DEVPI_HOST=127.0.0.1 keeps it from other containers.
 # Usage: sh devpi/test-entrypoint.sh
 set -eu
 
@@ -53,11 +56,14 @@ sample_argv() {
 }
 
 # start <password> [<index>]: a container on $VOL (or on $DATA when set), waited on until it says it is
-# ready (or stops); the password reaches docker through the environment, not its command line
+# ready (or stops); the password reaches docker through the environment, not its command line. $LISTEN,
+# when set, adds docker run options such as "-e DEVPI_PORT=3200".
 start() {
   docker rm -f "$NAME" >/dev/null 2>&1 || true
+  # shellcheck disable=SC2086
   DEVPI_ROOT_PASSWORD="$1" DEVPI_INDEX="${2:-root/public}" \
-    docker run -d --name "$NAME" --network "$NET" -v "${DATA:-$VOL}:/data" -e DEVPI_ROOT_PASSWORD -e DEVPI_INDEX "$TAG" >/dev/null
+    docker run -d --name "$NAME" --network "$NET" -v "${DATA:-$VOL}:/data" -e DEVPI_ROOT_PASSWORD -e DEVPI_INDEX \
+    ${LISTEN:-} "$TAG" >/dev/null
   i=0
   until docker logs "$NAME" 2>&1 | grep -q "devpi ready"; do
     i=$((i + 1))
@@ -69,6 +75,15 @@ start() {
 login() { docker exec "$NAME" sh -c "devpi use http://127.0.0.1:3141 >/dev/null && devpi login root --password '$1' >/dev/null 2>&1"; }
 # has_index [<index>]: root/public unless named
 has_index() { docker exec "$NAME" curl -sf -o /dev/null "http://127.0.0.1:3141/${1:-root/public}/+simple/"; }
+# reach <host:port>: whether devpi answers there from another container on the network
+reach() { docker run --rm --network "$NET" --entrypoint curl "$TAG" -sf -m 5 -o /dev/null "http://$1/+api"; }
+# not_root: devpi-server, and the start script (PID 1), run as a user other than root
+not_root() {
+  uids=$(docker top "$NAME" -eo pid,uid,args | awk '/devpi-server/ && !/awk/ { print $2 }')
+  [ -n "$uids" ] || fail "no devpi-server in the container"
+  echo "$uids" | grep -qx 0 && fail "devpi-server runs as root"
+  [ "$(docker exec "$NAME" awk '/^Uid:/ { print $2 }' /proc/1/status)" != 0 ] || fail "the start script runs as root"
+}
 
 # the first start, watched: the command lines of this host, and another container trying root's
 # empty password as fast as it can
@@ -104,6 +119,17 @@ login "" && fail "root still opens with the empty password"
 start "s3cret" || fail "did not restart with the same password"
 has_index || fail "root/public missing after a restart"
 login "s3cret" || fail "root does not open with DEVPI_ROOT_PASSWORD after a restart"
+not_root
+
+# a volume the image used to run as root on: every file in it root's, with its index and password
+docker rm -f "$NAME" >/dev/null
+docker run --rm --user 0 -v "$VOL:/data" --entrypoint chown "$TAG" -R 0:0 /data
+[ -z "$(docker run --rm --user 0 -v "$VOL:/data" --entrypoint find "$TAG" /data ! -user 0)" ] \
+  || fail "the volume was not made root's"
+start "s3cret" || fail "did not start on a volume whose files are root's"
+has_index || fail "root/public missing on a volume whose files were root's"
+login "s3cret" || fail "root does not open with DEVPI_ROOT_PASSWORD on a volume whose files were root's"
+not_root
 
 start "other" && fail "restarted with another password"
 docker logs "$NAME" 2>&1 | grep -q "is not DEVPI_ROOT_PASSWORD" || fail "no message for another password"
@@ -138,6 +164,7 @@ mkdir "$WORK/bind"
 DATA="$WORK/bind"
 start "s3cret" || fail "did not start on an empty bind-mounted directory"
 has_index || fail "root/public missing on a bind-mounted directory"
+not_root
 DATA=
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
@@ -162,5 +189,18 @@ has_index "root/dev" || fail "root/dev missing with DEVPI_INDEX=root/dev"
 
 start "" "team/dev" && fail "said ready for an index of another user than root"
 docker logs "$NAME" 2>&1 | grep -q "must be root/" || fail "no message for an index of another user than root"
+
+# DEVPI_PORT: the server answers on that port, from another container too, and not on 3141
+LISTEN="-e DEVPI_PORT=3200"
+start "s3cret" || fail "did not start with DEVPI_PORT=3200"
+reach "$NAME:3200" || fail "no answer on DEVPI_PORT=3200 from another container"
+reach "$NAME:3141" && fail "still answers on 3141 with DEVPI_PORT=3200"
+
+# DEVPI_HOST=127.0.0.1: the server answers inside its container only
+LISTEN="-e DEVPI_HOST=127.0.0.1"
+start "s3cret" || fail "did not start with DEVPI_HOST=127.0.0.1"
+docker exec "$NAME" curl -sf -o /dev/null http://127.0.0.1:3141/+api || fail "no answer on 127.0.0.1 with DEVPI_HOST=127.0.0.1"
+reach "$NAME:3141" && fail "reachable from another container with DEVPI_HOST=127.0.0.1"
+LISTEN=
 
 echo "devpi entrypoint: all checks passed"

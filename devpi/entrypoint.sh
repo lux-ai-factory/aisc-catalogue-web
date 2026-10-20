@@ -12,7 +12,17 @@
 # installs and runs, so without a password it does not start. So the setup runs on a server that listens on the loopback only, and the password goes to it
 # through the environment and an HTTP body, never a command line (any user of the Docker host reads
 # those with ps). Then the server is started again where it serves.
+#
+# The server never runs as root. Started as root (the image's default), this script hands the data
+# directory to the devpi user, so a volume an older image filled as root keeps working, and runs itself
+# again as that user (setpriv, from util-linux). Started as another user, it goes on as that user.
 set -eu
+
+if [ "$(id -u)" = 0 ]; then
+  mkdir -p "$DEVPISERVER_SERVERDIR"
+  chown -R devpi:devpi "$DEVPISERVER_SERVERDIR"
+  exec setpriv --reuid devpi --regid devpi --init-groups "$0" "$@"
+fi
 
 HOST=${DEVPI_HOST:-0.0.0.0}
 PORT=${DEVPI_PORT:-3141}

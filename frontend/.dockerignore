@@ -5,3 +5,4 @@ coverage
 .env.*
 Dockerfile
 test-image.sh
+test-bundle-secrets.sh

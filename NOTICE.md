@@ -9,7 +9,7 @@ This product includes software, originally developed as the **AISC** project, by
 
 ## License
 
-This software is licensed under the [Apache License, Version 2.0](LICENSE).
+This software is licensed under the [Apache License, Version 2.0](LICENSE.md).
 
 ---
 
@@ -22,8 +22,6 @@ Attribution notices for such dependencies, if any, are included here or in their
 
 ## Contributors
 
-We gratefully acknowledge contributions from external collaborators.  
-A full list of acknowledged contributors is maintained in [`CONTRIBUTORS.md`](CONTRIBUTORS.md).
+We gratefully acknowledge contributions from external collaborators.
 
-All contributions are made under the terms of the project's Contributor License Agreement (CLA).  
-See [`CLA/`](CLA/) for details.
+All contributions are made under the terms of the project's Contributor License Agreement (CLA).
