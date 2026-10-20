@@ -315,93 +315,6 @@ const styles = {
     backgroundColor: "#fff",
     transition: "left 0.15s ease",
   }),
-  // ── "Recommended" toggle (mock-up, disabled until the Wizard is wired in) ──
-  recToggleRow: {
-    position: "relative" as const,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "8px",
-    marginBottom: "8px",
-    fontSize: "13px",
-    fontWeight: 600 as const,
-    color: "#9aa0ad",
-    cursor: "default",
-    userSelect: "none" as const,
-  },
-  recToggleLabel: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-  },
-  recForLabel: {
-    fontWeight: 400 as const,
-    color: "#6c757d",
-    fontSize: "12px",
-  },
-  infoIcon: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "15px",
-    height: "15px",
-    borderRadius: "50%",
-    border: "1px solid #9aa0ad",
-    color: "#6c757d",
-    fontSize: "10px",
-    fontStyle: "italic" as const,
-    fontWeight: 700 as const,
-    fontFamily: "Georgia, serif",
-    cursor: "pointer",
-    lineHeight: 1,
-  },
-  toggleTrackDisabled: {
-    position: "relative" as const,
-    width: "38px",
-    height: "20px",
-    flexShrink: 0,
-    borderRadius: "20px",
-    backgroundColor: "#D8DCE6",
-  },
-  toggleKnobDisabled: {
-    position: "absolute" as const,
-    top: "2px",
-    left: "2px",
-    width: "16px",
-    height: "16px",
-    borderRadius: "50%",
-    backgroundColor: "#f1f1f4",
-  },
-  popupOverlay: {
-    position: "fixed" as const,
-    inset: 0,
-    zIndex: 40,
-  },
-  recPopup: {
-    position: "absolute" as const,
-    top: "28px",
-    left: 0,
-    zIndex: 50,
-    width: "248px",
-    padding: "12px 14px",
-    backgroundColor: "#fff",
-    border: "1px solid #dee2e6",
-    borderRadius: "10px",
-    boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-    fontWeight: 400 as const,
-    color: "#49454F",
-  },
-  recPopupText: {
-    fontSize: "12.5px",
-    lineHeight: 1.5,
-    marginBottom: "10px",
-  },
-  recPopupLink: {
-    fontSize: "12.5px",
-    fontWeight: 600 as const,
-    color: "#000FDF",
-    textDecoration: "none",
-  },
   trustworthinessdimensionItem: (active: boolean) => ({
     display: "inline-block",
     padding: "4px 12px",
@@ -695,10 +608,6 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
           </span>
         </div>
       )}
-
-      {/* The Wizard's "Recommended" control is NOT a sidebar filter, it lives
-          in a prominent banner above the catalogue grid (see Catalogue.tsx),
-          since it's a personalized recommendation, not a generic facet. */}
 
       {/* ── Trustworthiness Dimensions ── */}
       <div style={styles.sectionTitle}>Trustworthiness Dimensions</div>
