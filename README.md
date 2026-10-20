@@ -33,7 +33,8 @@ docker build -t aisc-catalogue-devpi devpi
 
 ```
 cd frontend && npm ci && npx vitest run && npx tsc --noEmit -p .
-sh devpi/test-entrypoint.sh      # builds the image and checks its start-up in throwaway containers
+sh frontend/test-image.sh        # builds the frontend image and checks what it serves and as whom
+sh devpi/test-entrypoint.sh      # builds the devpi image and checks its start-up in throwaway containers
 ```
 
 ## License

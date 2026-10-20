@@ -26,13 +26,17 @@ to the catalogue.
 
 ## Build
 
-The Dockerfile builds the app and serves the `build` folder on port 3000:
+The Dockerfile builds the app with Node, then serves only the built files with nginx, as an unprivileged
+user, on port 3000. Every address that is not a file gets the app's `index.html`, so the app's own pages
+(`/catalogue`, `/metrics`) load directly:
 
 ```
 docker build --build-arg CATALOGUE_BASE=/project-catalogue/ .
 ```
 
-Build arg: `CATALOGUE_BASE`, the path the build is served under (`/` by default).
+Build arg: `CATALOGUE_BASE`, the path the build is served under (`/` by default). The image itself
+serves at `/`: the gateway in front (AISC's Caddy) strips the base path before passing a request on, so a
+build for `/project-catalogue/` opened directly on port 3000 shows a blank page.
 
 `VITE_BACK_ORIGINS` (comma-separated, `http://localhost,http://localhost:8100`
 by default) lists the other origins the platform runs on, e.g. for a dev server
