@@ -5,9 +5,9 @@
 # with a root user and nothing else. This creates the publish index once,
 # idempotently, then hands over to the server in the foreground.
 #
-# Root's password: the image's is empty. The one handed in (DEVPI_ROOT_PASSWORD) is set the first time
-# (a restart already has it): whoever can log in as root can publish a package the engine installs and
-# runs. So the setup runs on a server that listens on the loopback only, and the password goes to it
+# Root's password: the image's is empty. The one handed in (DEVPI_ROOT_PASSWORD, required) is set the
+# first time (a restart already has it): whoever can log in as root can publish a package the engine
+# installs and runs, so without a password it does not start. So the setup runs on a server that listens on the loopback only, and the password goes to it
 # through the environment and an HTTP body, never a command line (any user of the Docker host reads
 # those with ps). Then the server is started again where it serves.
 set -eu
@@ -95,9 +95,8 @@ if auth is None:
             stop("root does not open with the password just set")
         print("devpi: root's password set")
     else:
-        print(f"devpi: no password for root (DEVPI_ROOT_PASSWORD is empty): anything that reaches port {port} "
-              "can publish", file=sys.stderr)
-        auth = empty
+        stop(f"DEVPI_ROOT_PASSWORD is empty: root would be open to anything that reaches port {port}, which could",
+             "then publish packages the engine installs and runs. Start it with a password.")
 
 # already there on a restart, which is not an error; anything else is
 if call("GET", f"/root/{index}")[0] != 200:

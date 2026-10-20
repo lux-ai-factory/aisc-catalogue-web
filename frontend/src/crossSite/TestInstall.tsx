@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { installTest } from "../services/catalogueApi";
+import { projectSlug } from "../services/projectCatalogue";
 import type { InstallCoordinates } from "./coordinates";
 import { Actions, s } from "./ControlInstall";
 
@@ -7,7 +8,8 @@ import { Actions, s } from "./ControlInstall";
  * "Install into this project…" for a test, without leaving the project's catalogue, as a control is
  * (ControlInstall). The catalogue's pages share an origin with the
  * platform, which installs the test in the engine with the person's sign-in: the engine checks the admin
- * role and records the install. The project is the catalogue's own, so there is nothing to choose.
+ * role and records the install. The project is the catalogue's own, so there is nothing to choose; the
+ * dialog names it, because the page's address says which project it is and anyone can write an address.
  */
 export default function TestInstall({
   coordinates,
@@ -67,6 +69,7 @@ export default function TestInstall({
             <div style={s.control}>
               <div style={s.title}>{coordinates.pkg}</div>
               <div style={s.muted}>{`Version ${coordinates.version}`}</div>
+              <div style={s.muted}>{`Into the project ${projectSlug() ?? ""}`}</div>
             </div>
             {done ? (
               <>

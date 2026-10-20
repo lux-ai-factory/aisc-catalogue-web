@@ -27,13 +27,13 @@ describe("connect", () => {
 
   it("opens the local receiver directly and focuses it when handshake-known", () => {
     const open = window.open as unknown as ReturnType<typeof vi.fn>;
-    dispatchInstall("http://localhost:8080", [
+    dispatchInstall("http://localhost", [
       { package: "a", version: "1" },
       { package: "b", version: "2" },
     ]);
     expect(open).toHaveBeenCalledTimes(1);
     const url = open.mock.calls[0][0] as string;
-    expect(url.startsWith("http://localhost:8080/receiver?uri=")).toBe(true);
+    expect(url.startsWith("http://localhost/receiver?uri=")).toBe(true);
     expect(decodeURIComponent(url)).toContain("package=a");
     expect(decodeURIComponent(url)).toContain("package=b");
     expect(open.mock.results[0].value.focus).toHaveBeenCalled();
@@ -50,20 +50,20 @@ describe("connect", () => {
 
   it("consumes a valid #env handshake and persists the target", () => {
     const payload = {
-      url: "http://localhost:8080",
+      url: "http://localhost",
       expires: Date.now() + 60_000,
     };
     window.location.hash = "#env=" + btoa(JSON.stringify(payload));
 
-    expect(startCrossSiteSession()).toBe("http://localhost:8080");
-    expect(getTargetEnv()).toBe("http://localhost:8080");
+    expect(startCrossSiteSession()).toBe("http://localhost");
+    expect(getTargetEnv()).toBe("http://localhost");
     // The token should be stripped from the URL.
     expect(window.location.hash).toBe("");
   });
 
   it("rejects an expired handshake", () => {
     const payload = {
-      url: "http://localhost:8080",
+      url: "http://localhost",
       expires: Date.now() - 1000,
     };
     window.location.hash = "#env=" + btoa(JSON.stringify(payload));
@@ -78,11 +78,11 @@ describe("connect", () => {
 
   it("returns null after disconnect", () => {
     const payload = {
-      url: "http://localhost:8080",
+      url: "http://localhost",
       expires: Date.now() + 60_000,
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    expect(getTargetEnv()).toBe("http://localhost:8080");
+    expect(getTargetEnv()).toBe("http://localhost");
     disconnectTargetEnv();
     expect(getTargetEnv()).toBeNull();
   });
@@ -99,9 +99,9 @@ describe("connect", () => {
   });
 
   it("still accepts an old handshake with only url and expires", () => {
-    const payload = { url: "http://localhost:8080", expires: Date.now() + 60_000 };
+    const payload = { url: "http://localhost", expires: Date.now() + 60_000 };
     window.history.replaceState(null, "", "/" + encode(payload));
-    expect(startCrossSiteSession()).toBe("http://localhost:8080");
+    expect(startCrossSiteSession()).toBe("http://localhost");
     expect(getHandshake()).toEqual(payload);
   });
 
@@ -109,6 +109,13 @@ describe("connect", () => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ url: "http://x", expires: Date.now() - 1 }));
     expect(getHandshake()).toBeNull();
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it("ignores a handshake whose url is not on the platform: installs never open another site", () => {
+    const payload = { url: "https://evil.example", expires: Date.now() + 60_000 };
+    window.history.replaceState(null, "", "/" + encode(payload));
+    expect(startCrossSiteSession()).toBeNull();
+    expect(getHandshake()).toBeNull();
   });
 
   it("ignores a handshake whose url is not an http(s) address", () => {

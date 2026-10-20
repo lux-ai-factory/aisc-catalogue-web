@@ -22,7 +22,7 @@ describe("CrossSiteContext disconnect", () => {
 
   it("forgets the whole handshake at once: target, Back link and project", async () => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      url: "http://localhost:8080",
+      url: "http://localhost",
       back: "http://localhost:8100/p/mcas",
       project: "3f2c0d1e-6a7b-4c8d-9e0f-112233445566",
       expires: Date.now() + 60_000,

@@ -16,7 +16,7 @@ describe("ConnectionBanner", () => {
 
   it("shows the connected state when a handshake is stored", async () => {
     const payload = {
-      url: "http://localhost:8080",
+      url: "http://localhost",
       expires: Date.now() + 60_000,
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -25,7 +25,7 @@ describe("ConnectionBanner", () => {
     expect(
       await screen.findByText(/Connected to local app/)
     ).toBeInTheDocument();
-    expect(screen.getByText(/http:\/\/localhost:8080/)).toBeInTheDocument();
+    expect(screen.getByText(/http:\/\/localhost/)).toBeInTheDocument();
   });
 
   it("shows the disconnected state otherwise", async () => {
@@ -37,7 +37,7 @@ describe("ConnectionBanner", () => {
 
   it("disconnects when the Disconnect action is clicked", async () => {
     const payload = {
-      url: "http://localhost:8080",
+      url: "http://localhost",
       expires: Date.now() + 60_000,
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

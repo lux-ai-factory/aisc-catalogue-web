@@ -4,8 +4,8 @@
 # - root/public exists after the first start and after a restart on the same data;
 # - with DEVPI_ROOT_PASSWORD, root opens with it and no longer with the empty password, also after a
 #   restart; a restart with a different one stops with a message;
-# - without it, root stays open with the empty password (a setup that hands no password in relies on that);
-#   a volume whose root has a password stops it with a message;
+# - without it, it does not start: root would be open to anyone who reaches the port (a message says so,
+#   on a new volume and on one whose root has a password);
 # - the password is never on a command line (any user of the Docker host can read those with ps), and
 #   root does not answer to the empty password from another container while the first start sets it;
 # - an index that cannot be created stops the start: no "devpi ready"; so does an index of another
@@ -94,9 +94,8 @@ start "" && fail "started without a password on a volume whose root has one"
 docker logs "$NAME" 2>&1 | grep -q "has a password in this data volume" || fail "no message for an empty password on a volume with one"
 
 docker rm -f "$NAME" >/dev/null && docker volume rm "$VOL" >/dev/null
-start "" || fail "did not start without a password"
-has_index || fail "root/public missing without a password"
-login "" || fail "root does not open with the empty password when none is set"
+start "" && fail "started without a password: root was open to anyone who reaches the port"
+docker logs "$NAME" 2>&1 | grep -q "DEVPI_ROOT_PASSWORD is empty" || fail "no message for a start without a password"
 
 t0=$(date +%s)
 docker stop -t 30 "$NAME" >/dev/null

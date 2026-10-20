@@ -55,6 +55,11 @@ describe("installing a test stays in the project's catalogue", () => {
     expect(within(dialog).getByText(/0\.1\.1/)).toBeTruthy();
   });
 
+  it("names the project it installs into, so a link to another project cannot pass unnoticed", async () => {
+    const dialog = await openDialog();
+    expect(within(dialog).getByText(/into the project mcas/i)).toBeTruthy();
+  });
+
   it("installs through the platform and says so; the card then says installed", async () => {
     vi.mocked(installTest).mockResolvedValue({ slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1" });
     const onInstalled = vi.fn();

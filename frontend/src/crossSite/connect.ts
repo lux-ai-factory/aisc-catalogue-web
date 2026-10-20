@@ -57,15 +57,16 @@ function isHttpUrl(value: string): boolean {
 }
 
 /**
- * The handshake as it may be used, or null. It must name an http(s) `url`
- * (opened in a new tab when a plugin is enabled) and must not have expired or
- * claim to last more than MAX_HANDSHAKE_MS. A `back` that is not http(s) is dropped.
+ * The handshake as it may be used, or null. It must name a `url` on the platform
+ * (isPlatformAddress: it is opened in a new tab when a plugin is enabled, and the
+ * handshake is anyone's to write) and must not have expired or claim to last more
+ * than MAX_HANDSHAKE_MS. A `back` that is not http(s) is dropped.
  */
 function validHandshake(p: unknown): HandshakePayload | null {
   const v = p as HandshakePayload | null;
   if (!v || typeof v.url !== "string" || typeof v.expires !== "number") return null;
   const now = Date.now();
-  if (!isHttpUrl(v.url) || v.expires <= now || v.expires > now + MAX_HANDSHAKE_MS) return null;
+  if (!isPlatformAddress(v.url) || v.expires <= now || v.expires > now + MAX_HANDSHAKE_MS) return null;
   if (v.back === undefined || isHttpUrl(v.back)) return v;
   const { back: _unsafe, ...rest } = v;
   return rest;
