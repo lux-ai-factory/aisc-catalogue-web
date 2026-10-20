@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import ToolDetailModal from "./ToolDetailModal";
 import { CrossSiteProvider } from "../../crossSite/CrossSiteContext";
 import type { Tool } from "../../services/catalogueApi";
-import { fetchInstallInfo, fetchToolTags } from "../../services/catalogueApi";
+import { fetchInstallInfo } from "../../services/catalogueApi";
 
 // The modal resolves install coordinates on mount: the engine installs a
 // distribution from the index, never a catalogue entry, so the footer can only
@@ -11,7 +11,6 @@ import { fetchInstallInfo, fetchToolTags } from "../../services/catalogueApi";
 // version. Both calls the modal makes on mount are stubbed here.
 
 vi.mock("../../services/catalogueApi", () => ({
-  fetchToolTags: vi.fn().mockResolvedValue([]),
   fetchInstallInfo: vi.fn(),
 }));
 
@@ -25,12 +24,7 @@ const makeTool = (over: Partial<Tool> = {}): Tool =>
     description: "desc",
     version: "1.0.0",
     licensing: "Open_Source",
-    status: "approved",
-    submitted_by: "admin",
-    reviewed_by: "admin",
-    reviewed_at: "",
     created_at: "",
-    storage_path: "/packages/example",
     completion_status: "full",
     metadata: null,
     tags: [],
@@ -133,13 +127,10 @@ describe("ToolDetailModal compliance questions", () => {
 });
 
 describe("ToolDetailModal control install", () => {
-  const withTags = (tags: Tool["tags"]) => vi.mocked(fetchToolTags).mockResolvedValue(tags as never);
-
   // The platform installs only what the catalogue exports as a control: an entry with the "control" type
   // tag (backend controls_export.is_control). A framework, or any entry with questions, is shown like a
   // control but must not take the control install, which the platform would refuse.
   it("is offered for an entry with the control tag", async () => {
-    withTags([{ id: 1, slug: "control", label: "Control", section: "type" }] as Tool["tags"]);
     mockInstallInfo.mockResolvedValue({ slug: "c", package_name: "", version: "", index_url: "", installable: false, reason: "a control" });
     show(makeTool({ tags: [{ id: 1, slug: "control", label: "Control", section: "type" }] as Tool["tags"],
                     questions: [{ id: 1, order: 1, text: "Q?" }] as Tool["questions"] }));
@@ -148,7 +139,6 @@ describe("ToolDetailModal control install", () => {
   });
 
   it("is not offered for a framework with questions", async () => {
-    withTags([{ id: 2, slug: "framework", label: "Framework", section: "type" }] as Tool["tags"]);
     mockInstallInfo.mockResolvedValue({ slug: "f", package_name: "", version: "", index_url: "", installable: false, reason: "not on the index" });
     show(makeTool({ tags: [{ id: 2, slug: "framework", label: "Framework", section: "type" }] as Tool["tags"],
                     questions: [{ id: 1, order: 1, text: "Q?" }] as Tool["questions"] }));
@@ -160,8 +150,6 @@ describe("ToolDetailModal control install", () => {
 
 describe("ToolDetailModal missing values", () => {
   beforeEach(() => {
-    // a test entry: an earlier test may have left the tag lookup answering a control's tags
-    vi.mocked(fetchToolTags).mockResolvedValue([]);
     mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, index_url: "", installable: false, reason: "not on the index" });
   });
 
@@ -191,7 +179,6 @@ describe("ToolDetailModal missing values", () => {
 
 describe("ToolDetailModal is a dialog", () => {
   beforeEach(() => {
-    vi.mocked(fetchToolTags).mockResolvedValue([]);
     mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, index_url: "", installable: false, reason: "not on the index" });
   });
 

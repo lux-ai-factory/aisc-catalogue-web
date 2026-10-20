@@ -13,7 +13,6 @@ import type { Tool } from "../services/catalogueApi";
 import { fetchInstallInfo } from "../services/catalogueApi";
 
 vi.mock("../services/catalogueApi", () => ({
-  fetchToolTags: vi.fn().mockResolvedValue([]),
   fetchInstallInfo: vi.fn().mockResolvedValue(null),
 }));
 
@@ -32,7 +31,7 @@ const OPTIONS = {
 const control = (): Tool =>
   ({
     id: 1, name: "Accuracy checklist", slug: "accuracy-checklist", description: "d", version: "1", licensing: "Open_Source",
-    status: "approved", submitted_by: "a", reviewed_by: "a", reviewed_at: "", created_at: "", storage_path: "",
+    created_at: "",
     completion_status: "full", metadata: null, metrics: [],
     tags: [{ id: 9, slug: "control", label: "Control", section: "type" }],
   }) as unknown as Tool;

@@ -2,8 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 // Pill-shaped navigation link (rounded, light-blue fill, bold blue text) used
-// for the cross-view switches between the catalogue and the metrics page:
-// "Explore metrics" on the catalogue, "By tags" on the metrics page. The icon
+// for the switches between the catalogue and the metrics page: "Explore
+// metrics" on the catalogue, "Back to catalogue" on the metrics page. The icon
 // trails the label by default; pass `iconBefore` to lead with it.
 
 interface NavPillProps {

@@ -6,8 +6,8 @@ import type { Tool } from "../../services/catalogueApi";
 const makeTool = (over: Partial<Tool> = {}): Tool =>
   ({
     id: 1, name: "Example", slug: "example", description: "desc", version: "1.0.0",
-    licensing: "Open_Source", status: "approved", submitted_by: "", reviewed_by: "",
-    reviewed_at: "", created_at: "", storage_path: "", completion_status: "full",
+    licensing: "Open_Source",
+    created_at: "", completion_status: "full",
     metadata: null, tags: [], metrics: [], ...over,
   }) as Tool;
 

@@ -1,18 +1,20 @@
 /**
- * Cross-site plugin handoff.
+ * The `#env=` handshake the AISC launcher adds to the catalogue's link, and the
+ * enable URI a test is handed over with when the catalogue has no project.
  *
- * The AISC launcher opens this catalogue with a `#env=` fragment carrying a
- * short-lived, base64-encoded payload:
+ * The fragment carries a short-lived, base64-encoded payload:
  *
- *   #env=<base64({ url: <local origin>, expires: <epoch ms> })>
+ *   #env=<base64({ url, expires, controls?, project?, back? })>
  *
- * We decode it, keep it for this tab, and later route "enable plugin" commands
- * back to that app. Nothing is sent to any server.
+ * It is read when this module loads, kept for this tab and stripped from the
+ * address. It says where the platform's webapp and controls app are, which
+ * project the catalogue was opened from, and the page to go back to. Nothing is
+ * sent to any server.
  *
  * The fragment is anyone's to write, so: the handshake is kept per tab
  * (sessionStorage), so two tabs opened from two projects keep their own; it may
- * claim to last an hour at most; and its Back link and controls app are taken
- * only on the platform's own origins: the page's own (the launcher's) and
+ * claim to last an hour at most; and its webapp, Back link and controls app are
+ * taken only on the platform's own origins: the page's own (the launcher's) and
  * VITE_BACK_ORIGINS (comma-separated; the stack's http://localhost and
  * http://localhost:8100 by default).
  */

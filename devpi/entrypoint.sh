@@ -101,9 +101,9 @@ if auth is None:
     if empty is None:
         # the volume keeps another password for root, and only that one opens it
         if password:
-            stop("root's password in this data volume is not DEVPI_ROOT_PASSWORD (env.secrets was made again?).",
-                 "start it with the old DEVPI_ROOT_PASSWORD, or remove the devpi data volume (the index is",
-                 "refilled by plugin-publisher) and start again.")
+            stop("root's password in this data volume is not DEVPI_ROOT_PASSWORD (was the password changed?).",
+                 "start it with the old DEVPI_ROOT_PASSWORD, or remove the devpi data volume (its packages",
+                 "must then be published again) and start again.")
         stop("root has a password in this data volume, and DEVPI_ROOT_PASSWORD is empty:",
              "start it with that password, or remove the devpi data volume and start again.")
     if password:

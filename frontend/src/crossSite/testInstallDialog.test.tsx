@@ -11,7 +11,6 @@ import { installTest } from "../services/catalogueApi";
 import { projectSlug } from "../services/projectCatalogue";
 
 vi.mock("../services/catalogueApi", () => ({
-  fetchToolTags: vi.fn().mockResolvedValue([]),
   fetchInstallInfo: vi.fn().mockResolvedValue({
     slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1", index_url: "",
     installable: true, reason: null,
@@ -26,7 +25,7 @@ vi.mock("../services/projectCatalogue", async (importOriginal) => ({
 const test = (): Tool =>
   ({
     id: 2, name: "LangBiTe", slug: "langbite", description: "d", version: "1", licensing: "Open_Source",
-    status: "approved", submitted_by: "a", reviewed_by: "a", reviewed_at: "", created_at: "", storage_path: "",
+    created_at: "",
     completion_status: "full", metadata: null, metrics: [], tags: [],
   }) as unknown as Tool;
 

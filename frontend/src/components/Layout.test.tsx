@@ -46,3 +46,18 @@ describe("Layout About the catalogue, from the keyboard", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("Layout header logo", () => {
+  it("is served with the app, under the build's base path, not from another site", () => {
+    vi.stubEnv("BASE_URL", "/project-catalogue/");
+    try {
+      renderLayout();
+      expect(screen.getByAltText("Luxembourg AI Factory")).toHaveAttribute(
+        "src",
+        "/project-catalogue/img/laif_cmyk_negatif.png"
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});

@@ -20,7 +20,6 @@ const strayFetches = () => net.fetch.mock.calls.map((call) => String(call[0]));
 vi.mock("../services/catalogueApi", () => ({
   fetchToolsDetailed: vi.fn(),
   fetchTags: vi.fn(),
-  fetchToolTags: vi.fn().mockResolvedValue([]),
   fetchInstallInfo: vi.fn(),
 }));
 
@@ -45,8 +44,8 @@ const tag = (slug: string, section: Tag["section"], parent?: string): Tag => ({
 const tool = (id: number, name: string, tags: Tag[]): Tool =>
   ({
     id, name, slug: name.toLowerCase(), description: "", version: "1", licensing: "Open_Source",
-    status: "approved", submitted_by: "", reviewed_by: "", reviewed_at: "", created_at: "",
-    storage_path: "", completion_status: "full", metadata: null, metrics: [],
+    created_at: "",
+    completion_status: "full", metadata: null, metrics: [],
     tags: [tag("control", "type"), ...tags],
   }) as Tool;
 
@@ -212,6 +211,20 @@ describe("Catalogue page of a project", () => {
     const sw = screen.getByRole("switch", { name: /for this project/i });
     expect(sw).toHaveAttribute("aria-checked", "false");
     expect(sw).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows a test framework on the Tests tab, not the Controls tab", async () => {
+    const framework = {
+      ...tool(4, "Harness", [tag("fairness", "dimension")]),
+      tags: [tag("test-framework", "type"), tag("fairness", "dimension")],
+    };
+    vi.mocked(fetchToolsDetailed).mockResolvedValue([...TOOLS, framework]);
+    renderPage();
+    await screen.findByText("Fair");
+    expect(screen.queryByText("Harness")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /tests/i }));
+    expect(await screen.findByText("Harness")).toBeInTheDocument();
+    expect(screen.queryByText("Fair")).toBeNull();
   });
 
   it("serves the footer images under the build's base path", async () => {

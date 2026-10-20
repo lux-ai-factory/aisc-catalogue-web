@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   projectSlug,
   fetchProjectCatalogue,
@@ -14,13 +14,15 @@ const platformStatus = (err: unknown) =>
 
 /**
  * The project's catalogue, once the platform confirms the project chose one: its private copy, or the
- * public catalogue read live through the platform. A page loads its data only then; until then `info`
- * is null, and `stopped` says why the page loads nothing (no project, no catalogue chosen yet, or the
- * platform did not answer).
+ * public catalogue read live through the platform. `onReady` loads the page's data then, in the same
+ * turn; until then `info` is null, and `stopped` says why the page loads nothing (no project, no
+ * catalogue chosen yet, or the platform did not answer).
  */
-export function useProjectCatalogue() {
+export function useProjectCatalogue(onReady: () => void) {
   const [info, setInfo] = useState<ProjectCatalogueInfo | null>(null);
   const [stopped, setStopped] = useState<string | null>(null);
+  const ready = useRef(onReady);
+  ready.current = onReady;
 
   useEffect(() => {
     if (!projectSlug()) {
@@ -31,8 +33,10 @@ export function useProjectCatalogue() {
     fetchProjectCatalogue().then(
       (answer) => {
         if (cancelled) return;
-        if (answer.mode === "private" || answer.mode === "public") setInfo(answer);
-        else setStopped(NOT_CHOSEN);
+        if (answer.mode === "private" || answer.mode === "public") {
+          setInfo(answer);
+          ready.current();
+        } else setStopped(NOT_CHOSEN);
       },
       (err) => {
         if (cancelled) return;

@@ -98,8 +98,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }}
       >
         <div style={s.headerLeft}>
+          {/* served with the app, under the build's base path (CATALOGUE_BASE) */}
           <img
-            src="https://stlxipuhot.blob.core.windows.net/staging/sharedmedia/ai/logos/laif_cmyk_negatif.png?ext=.png"
+            src={`${import.meta.env.BASE_URL}img/laif_cmyk_negatif.png`}
             alt="Luxembourg AI Factory"
             style={{ ...s.logo, ...(isMobile ? { height: "30px" } : {}) }}
           />

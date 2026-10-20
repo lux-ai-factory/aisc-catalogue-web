@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Layout from "../components/Layout";
 import NavPill from "../components/NavPill";
 import CatalogueSidebar from "../components/catalogue/CatalogueSidebar";
@@ -8,6 +8,7 @@ import type { SidebarFilters } from "../components/catalogue/CatalogueSidebar";
 import type { Tool, Tag } from "../services/catalogueApi";
 import { fetchToolsDetailed, fetchTags } from "../services/catalogueApi";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { entryKind } from "../components/catalogue/entry";
 import {
   fetchProjectCatalogue,
   updateFromPublic,
@@ -138,7 +139,6 @@ const Catalogue: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   // The project's copy, its dimensions, and the "For this project" filter (on
   // by default).
-  const { info: projectInfo, setInfo: setProjectInfo, stopped } = useProjectCatalogue();
   const [projectDimensions, setProjectDimensions] = useState<string[] | null>(null);
   const [dimensionsFailed, setDimensionsFailed] = useState(false);
   const [forProject, setForProject] = useState(true);
@@ -174,11 +174,9 @@ const Catalogue: React.FC = () => {
     }
   };
 
-  // The catalogue loads once the platform confirms the project chose one
-  // (useProjectCatalogue); otherwise the page says why and loads nothing.
-  const ready = projectInfo !== null;
-  useEffect(() => {
-    if (!ready) return;
+  // The catalogue loads once the platform confirms the project chose one;
+  // otherwise the page says why and loads nothing.
+  const { info: projectInfo, setInfo: setProjectInfo, stopped } = useProjectCatalogue(() => {
     fetchProjectDimensions()
       .then(setProjectDimensions)
       .catch((err) => {
@@ -186,7 +184,7 @@ const Catalogue: React.FC = () => {
         setDimensionsFailed(true);
       });
     loadData();
-  }, [ready]);
+  });
 
   // An admin refreshes a private copy from the public catalogue.
   const handleUpdateFromPublic = async () => {
@@ -303,38 +301,9 @@ const Catalogue: React.FC = () => {
         if (!filters.selectedLicenses.includes(licensingLabel)) return false;
       }
 
-      // Filter by tab type (tests vs controls)
-      if (filters.tab === "tests" || filters.tab === "controls") {
-        const toolTypeTags = toolTags
-          .filter((t) => t.section === "type")
-          .map((t) => t.slug);
-        // If the tool has type tags, filter by tab; otherwise show it in both
-        if (toolTypeTags.length > 0) {
-          const matchesTab =
-            filters.tab === "tests"
-              ? toolTypeTags.some(
-                  (slug) =>
-                    slug.includes("test") || slug.includes("benchmark")
-                )
-              : toolTypeTags.some(
-                  (slug) =>
-                    slug.includes("control") || slug.includes("framework")
-                );
-          // Only filter if we can determine type; don't hide tools with unknown types
-          if (
-            toolTypeTags.some(
-              (slug) =>
-                slug.includes("test") ||
-                slug.includes("benchmark") ||
-                slug.includes("control") ||
-                slug.includes("framework")
-            ) &&
-            !matchesTab
-          ) {
-            return false;
-          }
-        }
-      }
+      // Filter by tab: an entry whose kind is unknown shows on both
+      const kind = entryKind(tool);
+      if (kind && kind !== filters.tab) return false;
 
       return true;
     });
@@ -463,16 +432,7 @@ const Catalogue: React.FC = () => {
                 <ToolCard
                   key={tool.id}
                   tool={tool}
-                  variant={
-                    filters.tab
-                      ? filters.tab
-                      : (tool.tags ?? []).some(
-                          (t) =>
-                            t.slug === "control" || t.slug === "framework"
-                        )
-                        ? "controls"
-                        : "tests"
-                  }
+                  variant={filters.tab}
                   onClick={setSelectedTool}
                 />
               ))}

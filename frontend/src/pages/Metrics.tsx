@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Layout from "../components/Layout";
 import NavPill from "../components/NavPill";
 import ToolDetailModal from "../components/catalogue/ToolDetailModal";
@@ -283,34 +283,27 @@ const Metrics: React.FC = () => {
   const [selectedDimension, setSelectedDimension] = useState<string>("");
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
-  // Nothing loads until the platform confirms the project chose its catalogue.
-  const { info: projectInfo, stopped } = useProjectCatalogue();
-  const ready = projectInfo !== null;
 
-  // ── Fetch data once the project's catalogue is known ──
-  useEffect(() => {
-    if (!ready) return;
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const [metricsData, toolsData, tagsData] = await Promise.all([
-          fetchMetrics(),
-          fetchToolsDetailed(),
-          fetchTags(),
-        ]);
-        setMetrics(metricsData);
-        setTools(toolsData);
-        setTags(tagsData);
-      } catch (err) {
-        console.error("Failed to load metrics data:", err);
-        setError("Failed to load metrics. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [ready]);
+  // Nothing loads until the platform confirms the project chose its catalogue.
+  const { stopped } = useProjectCatalogue(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [metricsData, toolsData, tagsData] = await Promise.all([
+        fetchMetrics(),
+        fetchToolsDetailed(),
+        fetchTags(),
+      ]);
+      setMetrics(metricsData);
+      setTools(toolsData);
+      setTags(tagsData);
+    } catch (err) {
+      console.error("Failed to load metrics data:", err);
+      setError("Failed to load metrics. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  });
 
   // ── Lookups ──
   const toolBySlug = useMemo(() => {
@@ -349,7 +342,7 @@ const Metrics: React.FC = () => {
             <span style={s.pageTitleAccent}>Metric</span>
           </h1>
           <div style={s.filtersRow}>
-            {/* Return to the catalogue (the shared top nav was removed). */}
+            {/* Return to the catalogue. */}
             <NavPill
               to="/catalogue"
               label="Back to catalogue"

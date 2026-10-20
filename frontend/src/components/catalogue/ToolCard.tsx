@@ -2,10 +2,11 @@ import React from "react";
 import type { Tool } from "../../services/catalogueApi";
 import { providerName } from "./entry";
 
-// ─── Theme per variant ───────────────────────────────────────────────────────
+// ─── Theme per readiness ─────────────────────────────────────────────────────
 
 const themes = {
-  tests: {
+  // Blue: controls, and tests that are fully ready.
+  ready: {
     coloredBg: "#0A2EA41A",
     iconStroke: "#3b5bdb",
     tagBg: "#C5D2FF4D",
@@ -13,8 +14,8 @@ const themes = {
     tagBorder: "#C5D2FF",
     arrowBg: "#000FDF",
   },
-  // Pink/purple: used for controls and for Tests that are not fully ready.
-  controls: {
+  // Pink/purple: tests that are not fully ready.
+  notReady: {
     coloredBg: "#8D00DF1A",
     iconStroke: "#8D00DF",
     tagBg: "#D5A1F44D",
@@ -152,8 +153,7 @@ const ToolCard: React.FC<ToolCardProps> = ({
   // Controls are always blue. Tests are blue when fully ready
   // (completion_status === "full"), otherwise the pink/purple theme.
   const isReady = tool.completion_status === "full";
-  const t =
-    variant === "controls" || isReady ? themes.tests : themes.controls;
+  const t = variant === "controls" || isReady ? themes.ready : themes.notReady;
 
   const isControls = variant === "controls";
 

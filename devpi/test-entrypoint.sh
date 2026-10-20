@@ -94,6 +94,7 @@ login "s3cret" || fail "root does not open with DEVPI_ROOT_PASSWORD after a rest
 
 start "other" && fail "restarted with another password"
 docker logs "$NAME" 2>&1 | grep -q "is not DEVPI_ROOT_PASSWORD" || fail "no message for another password"
+docker logs "$NAME" 2>&1 | grep -q -e "env.secrets" -e "plugin-publisher" && fail "the message names files and services of another repo"
 
 start "" && fail "started without a password on a volume whose root has one"
 docker logs "$NAME" 2>&1 | grep -q "has a password in this data volume" || fail "no message for an empty password on a volume with one"

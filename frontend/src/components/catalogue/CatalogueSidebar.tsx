@@ -419,7 +419,7 @@ const styles = {
 };
 
 
-export type CatalogueTab = "tests" | "controls" | null;
+export type CatalogueTab = "tests" | "controls";
 
 export interface SidebarFilters {
   tab: CatalogueTab;
@@ -476,15 +476,14 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
   const toggleArrayItem = (arr: string[], item: string): string[] =>
     arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
 
-  // Always keep one tab active, clicking the active tab is a no-op (never
-  // collapses to "nothing selected").
+  // One tab is always active. A click on either tab, the active one too,
+  // resets every facet: the test-only facets (sector / AI system / license)
+  // don't apply to controls and would otherwise hide every control if left
+  // selected.
   const setTab = (tab: CatalogueTab) =>
     onFiltersChange({
       ...filters,
       tab,
-      // Reset all facets on tab switch, the test-only facets (sector / AI
-      // system / license) don't apply to controls and would otherwise hide
-      // every control if left selected.
       selectedDimensions: [],
       selectedSectors: [],
       selectedAiSystems: [],

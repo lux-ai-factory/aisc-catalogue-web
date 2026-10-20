@@ -7,7 +7,6 @@ import {
   fetchToolsDetailed,
   fetchTags,
   fetchMetrics,
-  fetchToolTags,
   fetchInstallInfo,
   installTest,
 } from "./catalogueApi";
@@ -22,7 +21,6 @@ const calls: [string, () => Promise<unknown>, (base: string) => string][] = [
   ["fetchToolsDetailed", () => fetchToolsDetailed(), (b) => `${b}/tool/`],
   ["fetchTags", () => fetchTags(), (b) => `${b}/tags/`],
   ["fetchMetrics", () => fetchMetrics(), (b) => `${b}/metric/`],
-  ["fetchToolTags", () => fetchToolTags(7), (b) => `${b}/tool/7/tags/`],
   ["fetchInstallInfo", () => fetchInstallInfo("ex"), (b) => `${b}/tool/ex/install-info`],
 ];
 
@@ -52,16 +50,6 @@ describe("catalogue API base", () => {
     await fetchTags();
     expect(mockedAxios.get.mock.calls[0][0]).toBe("/api/projects/first/catalogue/api/tags/");
     expect(mockedAxios.get.mock.calls[1][0]).toBe("/api/projects/second/catalogue/api/tags/");
-  });
-});
-
-describe("one entry's tags", () => {
-  const tags = [{ id: 1, slug: "fairness" }];
-
-  it("reads the platform's plain list in a project's catalogue", async () => {
-    openAt("?project=acme");
-    mockedAxios.get.mockResolvedValue({ data: tags });
-    await expect(fetchToolTags(7)).resolves.toEqual(tags);
   });
 });
 

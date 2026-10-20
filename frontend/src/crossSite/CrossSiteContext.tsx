@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
   startCrossSiteSession,
-  getTargetEnv,
   getHandshake,
   getBackUrl,
   disconnectTargetEnv,
@@ -34,7 +33,7 @@ export const CrossSiteProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // On mount, consume a `#env=` handshake (or restore a persisted one).
   useEffect(() => {
-    setTargetUrl(startCrossSiteSession() ?? getTargetEnv());
+    setTargetUrl(startCrossSiteSession());
     setBackUrl(getBackUrl());
     setHandshake(getHandshake());
   }, []);

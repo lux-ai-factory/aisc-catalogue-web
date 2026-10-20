@@ -12,6 +12,16 @@ and keeps each project's own copy.
 
 Both are built by AISC's compose files; neither is meant to run alone.
 
+## devpi environment
+
+| Variable | Default | What it is |
+|---|---|---|
+| `DEVPI_ROOT_PASSWORD` | none, required | root's password, set on the first start. Without it devpi does not start: whoever logs in as root can publish packages the engine installs and runs. A restart must use the same one. |
+| `DEVPI_INDEX` | `root/public` | the index the tests are published to, created on the first start. It must be one of root's, `root/<name>`. |
+| `DEVPI_HOST` | `0.0.0.0` | the address the server listens on once set up (the setup itself listens on 127.0.0.1 only). |
+| `DEVPI_PORT` | `3141` | the port it listens on. |
+| `DEVPISERVER_SERVERDIR` | `/data` | the server's data directory; mount a volume or a directory here. An empty one is initialised on the first start. |
+
 ## Build
 
 ```

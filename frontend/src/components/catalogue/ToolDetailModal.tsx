@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import type { Tool, Tag } from "../../services/catalogueApi";
-import { fetchToolTags } from "../../services/catalogueApi";
+import React, { useEffect } from "react";
+import type { Tool } from "../../services/catalogueApi";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import InstallPluginButton from "../../crossSite/InstallPluginButton";
 import { useInstallInfo, type InstallInfoState } from "../../hooks/useInstallInfo";
@@ -9,7 +8,7 @@ import { useCrossSite } from "../../crossSite/CrossSiteContext";
 import ControlInstall from "../../crossSite/ControlInstall";
 import TestInstall from "../../crossSite/TestInstall";
 import { projectSlug } from "../../services/projectCatalogue";
-import { providerName } from "./entry";
+import { entryKind, providerName } from "./entry";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
@@ -216,16 +215,8 @@ const InstallAction: React.FC<{
 
 const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInstalled }) => {
   const isMobile = useIsMobile();
-  const [toolTags, setToolTags] = useState<Tag[]>(tool.tags ?? []);
-
-  useEffect(() => {
-    // If tags aren't already loaded, fetch them
-    if (!tool.tags || tool.tags.length === 0) {
-      fetchToolTags(tool.id)
-        .then(setToolTags)
-        .catch((err) => console.error("Failed to load tool tags:", err));
-    }
-  }, [tool.id, tool.tags]);
+  // every entry comes with its tags (the detailed list)
+  const toolTags = tool.tags ?? [];
 
   // Escape closes, unless a dialog opened from this one (an install) has taken it
   useEffect(() => {
@@ -245,12 +236,9 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
   const sourceTags = toolTags.filter((t) => t.section === "source");
   const subdimTags = toolTags.filter((t) => t.section === "controls_subdim");
 
-  // A control if it carries a control/framework type tag or has a questionnaire.
   // Controls are compliance checklists, so they must NOT show the test-shaped
   // metadata (provider/branch/version/project maturity/testing solution …).
-  const isControls =
-    typeTags.some((t) => t.slug === "control" || t.slug === "framework") ||
-    (tool.questions?.length ?? 0) > 0;
+  const isControls = entryKind(tool) === "controls";
   // Only an entry tagged `control` can be exported as a checklist.
   const isInstallableControl = typeTags.some((t) => t.slug === "control");
   // The AISC platform answers install-info for a test; a control's install goes to the controls app

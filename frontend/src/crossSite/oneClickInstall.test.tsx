@@ -8,7 +8,6 @@ import type { Tool } from "../services/catalogueApi";
 import { fetchInstallInfo } from "../services/catalogueApi";
 
 vi.mock("../services/catalogueApi", () => ({
-  fetchToolTags: vi.fn().mockResolvedValue([]),
   fetchInstallInfo: vi.fn(),
 }));
 
@@ -62,12 +61,7 @@ const makeTool = (over: Partial<Tool> = {}): Tool =>
     description: "desc",
     version: "1.0.0",
     licensing: "Open_Source",
-    status: "approved",
-    submitted_by: "admin",
-    reviewed_by: "admin",
-    reviewed_at: "",
     created_at: "",
-    storage_path: "/packages/example",
     completion_status: "full",
     metadata: null,
     tags: [],

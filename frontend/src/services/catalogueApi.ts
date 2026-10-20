@@ -34,7 +34,6 @@ axios.interceptors.request.use((config) => {
 // ─── Types matching backend models ───────────────────────────────────────────
 
 export type Licensing = "Open_Source" | "Proprietary";
-export type Status = "pending" | "rejected" | "approved";
 export type TagSection =
   | "license"
   | "ai_type"
@@ -112,12 +111,7 @@ export interface Tool {
   description: string;
   version: string;
   licensing: Licensing;
-  status: Status;
-  submitted_by: string;
-  reviewed_by: string;
-  reviewed_at: string;
   created_at: string;
-  storage_path: string;
   /** JSON-LD vt:completionStatus, drives blue (full) vs pink (partial/stub) cards. */
   completion_status?: CompletionStatus;
   // Populated when ?detailed=true
@@ -151,12 +145,6 @@ export async function fetchTags(): Promise<Tag[]> {
 /** Fetch every metric across every tool, the data source for the Metrics page. */
 export async function fetchMetrics(): Promise<Metric[]> {
   const res = await axios.get<Metric[]>(`${apiBase()}/metric/`);
-  return res.data;
-}
-
-/** Fetch tags associated with a specific tool. */
-export async function fetchToolTags(toolId: number): Promise<Tag[]> {
-  const res = await axios.get<Tag[]>(`${apiBase()}/tool/${toolId}/tags/`);
   return res.data;
 }
 
