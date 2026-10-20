@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import Layout from "./Layout";
 import { CrossSiteProvider } from "../crossSite/CrossSiteContext";
 import { STORAGE_KEY } from "../crossSite/connect";
@@ -45,8 +45,47 @@ describe("Layout account and Back links", () => {
   it("offers no Back to an address outside the platform", async () => {
     handshake("https://evil.example/p/mcas");
     renderLayout();
-    await screen.findByText(/Connected to local app/);
+    await screen.findByRole("button", { name: "About the catalogue" });
     expect(screen.queryByRole("link", { name: "Back to the project" })).toBeNull();
+  });
+
+  it("shows no local-app bar and no Disconnect, also with a handshake", async () => {
+    handshake("http://localhost:8100/p/mcas");
+    renderLayout();
+    await screen.findByRole("link", { name: "Back to the project" });
+    expect(screen.queryByText(/local app/i)).toBeNull();
+    expect(screen.queryByText("Disconnect")).toBeNull();
+  });
+});
+
+describe("Layout once the handshake has expired", () => {
+  const AGAIN = "Open the catalogue again from the project page.";
+
+  it("says to open the catalogue again where the Back link was", async () => {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ url: "http://localhost/webapp", expires: Date.now() - 1, back: "http://localhost:8100/p/mcas" })
+    );
+    renderLayout();
+    expect(await screen.findByText(AGAIN)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back to the project" })).toBeNull();
+  });
+
+  it("says it once the hour runs out while the page is open", async () => {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ url: "http://localhost/webapp", expires: Date.now() + 300, back: "http://localhost:8100/p/mcas" })
+    );
+    renderLayout();
+    expect(await screen.findByRole("link", { name: "Back to the project" })).toBeInTheDocument();
+    expect(await screen.findByText(AGAIN, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back to the project" })).toBeNull();
+  });
+
+  it("says nothing when the catalogue was opened without a handshake", async () => {
+    renderLayout();
+    await screen.findByRole("button", { name: "About the catalogue" });
+    expect(screen.queryByText(AGAIN)).toBeNull();
   });
 });
 

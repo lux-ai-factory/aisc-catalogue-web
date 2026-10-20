@@ -13,7 +13,7 @@ export interface InstallInfoState {
  * Which distribution a catalogue entry is, and which version the package index
  * actually has. The engine installs a distribution, not a catalogue entry, so
  * the backend is asked rather than the tool's own name and version used.
- * A null slug asks nothing (a build without installs).
+ * A null slug asks nothing (a control, or a page opened without a project).
  */
 export function useInstallInfo(slug: string | null): InstallInfoState {
   const [info, setInfo] = useState<InstallInfo | null>(null);

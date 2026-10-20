@@ -3,11 +3,44 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CatalogueSidebar from "./CatalogueSidebar";
 import type { SidebarFilters } from "./CatalogueSidebar";
+import type { Tag } from "../../services/catalogueApi";
+
+// The catalogue's tags as its API gives them (catalogue seed.py): labels with "&" and "well-being",
+// which the sidebar's old built-in lists spelled "and" and "Wellbeing"; a sort_order per tag, not the
+// order of the list; sub-dimensions of tests and of controls naming their dimension.
+let nextId = 1;
+const t = (label: string, slug: string, section: Tag["section"], sort_order: number, parent?: string): Tag => ({
+  id: nextId++, slug, label, section, color_bg: "#fff", _color_text: "#000", sort_order,
+  parent_dimension_slug: parent ?? null,
+});
+const TAGS: Tag[] = [
+  t("Societal & environmental well-being", "societal-environmental-wellbeing", "dimension", 6),
+  t("Technical Robustness & Safety", "technical-robustness-safety", "dimension", 1),
+  t("Transparency", "transparency", "dimension", 5),
+  t("Privacy & Data Governance", "privacy-data-governance", "dimension", 3),
+  t("Accountability", "accountability", "dimension", 7),
+  t("Drift detection", "drift-detection", "testing_subdim", 3, "technical-robustness-safety"),
+  t("Stress testing", "stress-testing", "testing_subdim", 0, "technical-robustness-safety"),
+  t("Prompt Injection", "prompt-injection", "testing_subdim", 6, "technical-robustness-safety"),
+  t("Local interpretability", "local-interpretability", "testing_subdim", 25, "transparency"),
+  t("PII detection testing", "pii-detection-testing", "testing_subdim", 18, "privacy-data-governance"),
+  t("Energy consumption tracking", "energy-consumption-tracking", "testing_subdim", 30, "societal-environmental-wellbeing"),
+  t("Human fallback", "human-fallback", "controls_subdim", 6, "technical-robustness-safety"),
+  t("Model cards", "model-cards", "controls_subdim", 16, "transparency"),
+  t("Pseudonymisation", "pseudonymisation", "controls_subdim", 9, "privacy-data-governance"),
+  t("RASCI charts", "rasci-charts", "controls_subdim", 26, "accountability"),
+  t("Audio", "audio", "ai_type", 2),
+  t("Multimodal", "multimodal", "ai_type", 0),
+  t("Computer Vision", "computer-vision", "ai_type", 1),
+  t("Natural Language Processing", "natural-language-processing", "ai_type", 3),
+  t("Knowledge & Retrieval", "knowledge-and-retrieval", "ai_type", 4),
+  t("Decision & Optimization", "decision-and-optimization", "ai_type", 5),
+  t("Agents & Agentic Systems", "agents-and-agentic-systems", "ai_type", 11),
+];
 
 const makeFilters = (over: Partial<SidebarFilters> = {}): SidebarFilters => ({
   tab: "tests",
   selectedDimensions: [],
-  selectedSectors: [],
   selectedAiSystems: [],
   selectedLicenses: [],
   selectedSources: [],
@@ -21,7 +54,7 @@ const baseProps = (over: Record<string, unknown> = {}) => ({
   onSearchChange: vi.fn(),
   pluginOnly: false,
   onPluginOnlyChange: vi.fn(),
-  tags: [],
+  tags: TAGS,
   ...over,
 });
 
@@ -137,10 +170,10 @@ describe("CatalogueSidebar filter buttons say whether they are on", () => {
         }) as any)}
       />
     );
-    expect(screen.getByRole("button", { name: "Technical Robustness and Safety", pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Technical Robustness & Safety", pressed: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Stress testing", pressed: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Drift detection", pressed: false })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Human Agency and Oversight", pressed: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Privacy & Data Governance", pressed: false })).toBeInTheDocument();
   });
 });
 
@@ -159,7 +192,7 @@ describe("CatalogueSidebar selected filters look selected", () => {
     );
     const bg = (name: string) => screen.getByRole("button", { name }).style.backgroundColor;
     for (const [on, off] of [
-      ["Transparency", "Privacy and Data Governance"],
+      ["Transparency", "Privacy & Data Governance"],
       ["Computer Vision", "Multimodal"],
       ["Open", "Closed"],
     ]) {
@@ -201,5 +234,69 @@ describe("CatalogueSidebar 'For this project' switch", () => {
     expect(
       screen.getByText("No control objectives selected yet: showing everything.")
     ).toBeInTheDocument();
+  });
+});
+
+describe("CatalogueSidebar lists come from the catalogue's tags", () => {
+  const names = (role: HTMLElement[]) => role.map((b) => b.textContent);
+  const dimensionButtons = () =>
+    screen.getAllByRole("button").filter((b) => TAGS.some((x) => x.section === "dimension" && x.label === b.textContent));
+
+  it("shows the tags' labels, not the old built-in ones", () => {
+    render(<CatalogueSidebar {...(baseProps() as any)} />);
+    expect(screen.getByRole("button", { name: "Societal & environmental well-being" })).toBeInTheDocument();
+    for (const old of ["Societal and Environmental Wellbeing", "Societal and Environmental Well-being",
+                       "Technical Robustness and Safety", "Human Agency and Oversight"]) {
+      expect(screen.queryByRole("button", { name: old })).toBeNull();
+    }
+  });
+
+  it("orders the dimensions by their sort_order", () => {
+    render(<CatalogueSidebar {...(controlsProps() as any)} />);
+    expect(names(dimensionButtons())).toEqual([
+      "Technical Robustness & Safety", "Privacy & Data Governance", "Transparency", "Accountability",
+    ]);
+  });
+
+  it("shows on each tab the dimensions with sub-dimensions of that tab", () => {
+    render(<CatalogueSidebar {...(baseProps() as any)} />);
+    expect(names(dimensionButtons())).toEqual([
+      "Technical Robustness & Safety", "Privacy & Data Governance", "Transparency", "Societal & environmental well-being",
+    ]);
+    expect(screen.queryByRole("button", { name: "Accountability" })).toBeNull();
+  });
+
+  it("a dimension that has no sub-dimensions at all shows on both tabs", () => {
+    const extra = t("Record-keeping", "record-keeping", "dimension", 11);
+    const { unmount } = render(<CatalogueSidebar {...(baseProps({ tags: [...TAGS, extra] }) as any)} />);
+    expect(screen.getByRole("button", { name: "Record-keeping" })).toBeInTheDocument();
+    unmount();
+    render(<CatalogueSidebar {...(controlsProps({ tags: [...TAGS, extra] }) as any)} />);
+    expect(screen.getByRole("button", { name: "Record-keeping" })).toBeInTheDocument();
+  });
+
+  it("opens a dimension on the tab's own sub-dimensions, in their sort_order", () => {
+    render(<CatalogueSidebar {...(baseProps() as any)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Technical Robustness & Safety" }));
+    const subs = ["Stress testing", "Drift detection", "Prompt Injection"];
+    const shown = screen.getAllByRole("button").map((b) => b.textContent).filter((n) => subs.includes(n ?? ""));
+    expect(shown).toEqual(subs);
+    expect(screen.queryByRole("button", { name: "Human fallback" })).toBeNull();
+  });
+
+  it("lists the AI systems of the ai_type tags in their sort_order, six until See more", () => {
+    render(<CatalogueSidebar {...(baseProps() as any)} />);
+    const ai = TAGS.filter((x) => x.section === "ai_type").sort((a, b) => a.sort_order - b.sort_order).map((x) => x.label);
+    const shown = () => screen.getAllByRole("button").map((b) => b.textContent).filter((n) => ai.includes(n ?? ""));
+    expect(shown()).toEqual(ai.slice(0, 6));
+    fireEvent.click(screen.getByRole("button", { name: "See more +" }));
+    expect(shown()).toEqual(ai);
+  });
+
+  it("lists no dimension and no AI system before the tags have loaded", () => {
+    render(<CatalogueSidebar {...(baseProps({ tags: [] }) as any)} />);
+    expect(screen.queryByRole("button", { name: "Transparency" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Multimodal" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "See more +" })).toBeNull();
   });
 });

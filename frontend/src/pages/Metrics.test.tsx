@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import Metrics from "./Metrics";
 import { CrossSiteProvider } from "../crossSite/CrossSiteContext";
 import type { Metric, Tool } from "../services/catalogueApi";

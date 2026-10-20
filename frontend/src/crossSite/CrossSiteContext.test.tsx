@@ -1,26 +1,23 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { CrossSiteProvider, useCrossSite } from "./CrossSiteContext";
 import { STORAGE_KEY } from "./connect";
 
 // the handshake is kept per tab (sessionStorage)
-/** Shows what the context holds, and a button that disconnects. */
+/** Shows what the context holds. */
 const Probe = () => {
-  const { targetUrl, backUrl, handshake, disconnect } = useCrossSite();
+  const { backUrl, handshake } = useCrossSite();
   return (
     <div>
-      <span data-testid="target">{targetUrl ?? "none"}</span>
       <span data-testid="back">{backUrl ?? "none"}</span>
       <span data-testid="project">{handshake?.project ?? "none"}</span>
-      <button onClick={disconnect}>Disconnect</button>
     </div>
   );
 };
 
-describe("CrossSiteContext disconnect", () => {
+describe("CrossSiteContext", () => {
   beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
-  it("forgets the whole handshake at once: target, Back link and project", async () => {
+  it("holds the tab's handshake: its Back link and its project", async () => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
       url: "http://localhost",
       back: "http://localhost:8100/p/mcas",
@@ -29,12 +26,12 @@ describe("CrossSiteContext disconnect", () => {
     }));
     render(<CrossSiteProvider><Probe /></CrossSiteProvider>);
     expect(await screen.findByText("http://localhost:8100/p/mcas")).toBeInTheDocument();
+    expect(screen.getByTestId("project")).toHaveTextContent("3f2c0d1e-6a7b-4c8d-9e0f-112233445566");
+  });
 
-    await userEvent.click(screen.getByText("Disconnect"));
-
-    expect(screen.getByTestId("target")).toHaveTextContent("none");
+  it("holds nothing without a handshake", () => {
+    render(<CrossSiteProvider><Probe /></CrossSiteProvider>);
     expect(screen.getByTestId("back")).toHaveTextContent("none");
     expect(screen.getByTestId("project")).toHaveTextContent("none");
-    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 });

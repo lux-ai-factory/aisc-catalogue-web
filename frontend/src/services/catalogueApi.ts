@@ -1,7 +1,9 @@
 import axios from "axios";
 import { projectSlug, catalogueBase } from "./projectCatalogue";
 
-axios.defaults.withCredentials = true;
+// The platform is on the page's own origin: the sign-in cookie goes with every
+// request by itself, and the platform asks for no CSRF header (its cookie is
+// SameSite=lax and its writes take JSON).
 
 /** Where the catalogue reads go: the project's catalogue on the AISC platform,
  *  read on each call because the project comes from the page URL. Without a
@@ -11,25 +13,6 @@ function apiBase(): string {
   if (!slug) throw new Error("No project");
   return catalogueBase(slug);
 }
-
-
-function getCsrfToken() {
-  const match = document.cookie.match(new RegExp('(^| )csrftoken=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-axios.interceptors.request.use((config) => {
-  if (config.method && config.method.toLowerCase() !== 'get') {
-    const token = getCsrfToken();
-    if (token) {
-      config.headers['X-CSRFToken'] = token;
-    }
-  }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
-});
-
 
 // ─── Types matching backend models ───────────────────────────────────────────
 

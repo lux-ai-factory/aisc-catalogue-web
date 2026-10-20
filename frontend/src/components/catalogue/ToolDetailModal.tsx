@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import type { Tool } from "../../services/catalogueApi";
 import { useIsMobile } from "../../hooks/useIsMobile";
-import InstallPluginButton from "../../crossSite/InstallPluginButton";
 import { useInstallInfo, type InstallInfoState } from "../../hooks/useInstallInfo";
 import { installCoordinates } from "../../crossSite/coordinates";
 import { useCrossSite } from "../../crossSite/CrossSiteContext";
@@ -173,35 +172,31 @@ interface ToolDetailModalProps {
 }
 
 /** The footer's install action, through the AISC platform: a control goes to
- *  the platform's controls app, a test is installed in place when the project
- *  is known and sent to the engine otherwise, and anything not installable
- *  says why. */
+ *  the platform's controls app, a test is installed into the catalogue's own
+ *  project (or says Installed when it already is), and anything not installable
+ *  says why. Without a project there is nothing to install a test into, so
+ *  nothing is offered. */
 const InstallAction: React.FC<{
   slug: string;
   isControls: boolean;
+  installed: boolean;
   install: InstallInfoState;
   style: React.CSSProperties;
   onInstalled?: (slug: string) => void;
-}> = ({ slug, isControls, install, style, onInstalled }) => {
-  const { handshake } = useCrossSite();
+}> = ({ slug, isControls, installed, install, style, onInstalled }) => {
+  const { handshake, expired } = useCrossSite();
   if (isControls) {
-    return <ControlInstall slug={slug} handshake={handshake} style={style} onInstalled={onInstalled} />;
+    return (
+      <ControlInstall slug={slug} handshake={handshake} expired={expired} style={style} onInstalled={onInstalled} />
+    );
+  }
+  if (!projectSlug()) return null;
+  if (installed) {
+    return <span style={{ color: "#000FDF", fontSize: 13, fontWeight: 700, alignSelf: "center" }}>Installed</span>;
   }
   const coordinates = installCoordinates(install.info);
-  if (coordinates && projectSlug()) {
-    return <TestInstall coordinates={coordinates} style={style} onInstalled={onInstalled} />;
-  }
   if (coordinates) {
-    return (
-      <InstallPluginButton
-        pkg={coordinates.pkg}
-        version={coordinates.version}
-        slug={coordinates.slug}
-        project={handshake?.project}
-        label="Install into a project…"
-        style={style}
-      />
-    );
+    return <TestInstall coordinates={coordinates} style={style} onInstalled={onInstalled} />;
   }
   return (
     <span style={{ color: "#6b7280", fontSize: 13, alignSelf: "center" }}>
@@ -241,9 +236,10 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
   const isControls = entryKind(tool) === "controls";
   // Only an entry tagged `control` can be exported as a checklist.
   const isInstallableControl = typeTags.some((t) => t.slug === "control");
-  // The AISC platform answers install-info for a test; a control's install goes to the controls app
-  // and never uses it.
-  const install = useInstallInfo(!isInstallableControl ? tool.slug : null);
+  // The AISC platform answers install-info for a test of the catalogue's project that is not installed
+  // yet; a control's install goes to the controls app and never uses it.
+  const installed = !isInstallableControl && !!tool.aisc_installed;
+  const install = useInstallInfo(!isInstallableControl && !installed && projectSlug() ? tool.slug : null);
   const provider = providerName(meta);
   const sourceLabel =
     sourceTags.map((t) => t.label).join(", ") || provider || "";
@@ -663,6 +659,7 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
           <InstallAction
             slug={tool.slug}
             isControls={isInstallableControl}
+            installed={installed}
             install={install}
             style={styles.actionBtn(false)}
             onInstalled={onInstalled}

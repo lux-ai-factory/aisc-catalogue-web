@@ -8,8 +8,9 @@ import { fetchInstallInfo } from "../../services/catalogueApi";
 
 // The modal resolves install coordinates on mount: the engine installs a
 // distribution from the index, never a catalogue entry, so the footer can only
-// offer an enable once the platform has said which distribution and which
-// version. The call the modal makes on mount is stubbed here.
+// offer an install once the platform has said which distribution and which
+// version. The call the modal makes on mount is stubbed here. The page is the
+// catalogue of a project (?project=acme): only a project's catalogue installs.
 
 vi.mock("../../services/catalogueApi", () => ({
   fetchInstallInfo: vi.fn(),
@@ -42,10 +43,11 @@ const show = (tool: Tool = makeTool()) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.history.replaceState(null, "", "/catalogue?project=acme");
 });
 
 describe("ToolDetailModal install action", () => {
-  it("offers the enable once the index has a version", async () => {
+  it("offers the install into this project once the index has a version", async () => {
     mockInstallInfo.mockResolvedValue({
       slug: "example",
       package_name: "aisc-plugin-example",
@@ -57,14 +59,7 @@ describe("ToolDetailModal install action", () => {
 
     show();
 
-    // The same label as a control's button.
-    const link = await screen.findByRole("link", { name: /install into a project/i });
-    // The URI is the whole contract with the engine: the distribution and the
-    // version to install, plus the catalogue entry it came from.
-    expect(link).toHaveAttribute(
-      "href",
-      "web+aiscplugin://enable?package=aisc-plugin-example&version=0.1.2&slug=example"
-    );
+    expect(await screen.findByRole("button", { name: /install into this project/i })).toBeInTheDocument();
     expect(mockInstallInfo).toHaveBeenCalledWith("example");
   });
 
@@ -143,6 +138,21 @@ describe("ToolDetailModal control install", () => {
     show(controlEntry());
     expect(await screen.findByText(/install this control/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /install into a project/i })).toBeNull();
+  });
+
+  it("once the handshake has expired, says to open the catalogue again from the project page", async () => {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ url: "http://localhost/webapp", expires: Date.now() - 1, controls: "http://localhost/controls" })
+    );
+    try {
+      show(controlEntry());
+      expect(await screen.findByText("Open the catalogue again from the project page.")).toBeInTheDocument();
+      expect(screen.queryByText(/Open the catalogue from your platform/)).toBeNull();
+      expect(screen.queryByRole("link", { name: /install into a project/i })).toBeNull();
+    } finally {
+      sessionStorage.clear();
+    }
   });
 
   it("is offered for an entry with the control tag once the platform's handshake says where its controls app is", async () => {

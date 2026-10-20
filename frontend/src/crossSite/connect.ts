@@ -1,15 +1,16 @@
 /**
- * The `#env=` handshake the AISC launcher adds to the catalogue's link, and the
- * enable URI a test is handed over with when the catalogue has no project.
+ * The `#env=` handshake the AISC launcher adds to the catalogue's link.
  *
  * The fragment carries a short-lived, base64-encoded payload:
  *
  *   #env=<base64({ url, expires, controls?, project?, back? })>
  *
  * It is read when this module loads, kept for this tab and stripped from the
- * address. It says where the platform's webapp and controls app are, which
- * project the catalogue was opened from, and the page to go back to. Nothing is
- * sent to any server.
+ * address. It says where the platform's controls app is, which project the
+ * catalogue was opened from, and the page to go back to. It also names the
+ * platform's webapp (`url`), which the launcher always sends: nothing opens it
+ * any more, but a handshake without one on the platform is still refused.
+ * Nothing is sent to any server.
  *
  * The fragment is anyone's to write, so: the handshake is kept per tab
  * (sessionStorage), so two tabs opened from two projects keep their own; it may
@@ -18,9 +19,13 @@
  * VITE_BACK_ORIGINS (comma-separated; the stack's http://localhost and
  * http://localhost:8100 by default).
  */
-import { PID } from "./controlsInstall";
-
 export const STORAGE_KEY = "aisc_target_env";
+/** What the page says where the handshake's Back link or control install would
+ *  be, once the handshake has run out of time. */
+export const EXPIRED_MESSAGE = "Open the catalogue again from the project page.";
+
+/** Set for the tab once its handshake has run out of time, until a fresh one arrives. */
+const EXPIRED_KEY = "aisc_target_env_expired";
 
 /** Where the handshake is kept: per tab. */
 const store = (): Storage => sessionStorage;
@@ -34,6 +39,7 @@ const BACK_ORIGINS: readonly string[] = (
   .filter(Boolean);
 
 export interface HandshakePayload {
+  /** The platform's webapp: required and checked, not used. */
   url: string;
   expires: number;
   /** Where the opening AISC's controls app lives, e.g. http://localhost/controls. */
@@ -60,9 +66,9 @@ function isHttpUrl(value: string): boolean {
 
 /**
  * The handshake as it may be used, or null. It must name a `url` on the platform
- * (isPlatformAddress: it is opened in a new tab when a plugin is enabled, and the
- * handshake is anyone's to write) and must not have expired or claim to last more
- * than MAX_HANDSHAKE_MS. A `back` that is not http(s) is dropped.
+ * (isPlatformAddress: the handshake is anyone's to write, and the launcher always
+ * sends its own) and must not have expired or claim to last more than
+ * MAX_HANDSHAKE_MS. A `back` that is not http(s) is dropped.
  */
 function validHandshake(p: unknown): HandshakePayload | null {
   const v = p as HandshakePayload | null;
@@ -74,41 +80,24 @@ function validHandshake(p: unknown): HandshakePayload | null {
   return rest;
 }
 
-export interface InstallEntry {
-  /** The catalogue entry's slug, when the caller knows it. */
-  slug?: string;
-  package: string;
-  version: string;
-}
-
-/**
- * Build a custom-protocol install URI for one or more plugins. Repeated
- * `package`/`version` pairs let a single enable carry several plugins (the
- * local app shows them as a queue).
- */
-export function buildEnableUri(entries: InstallEntry[]): string {
-  const query = entries
-    .map((e) => {
-      const parts = [
-        `package=${encodeURIComponent(e.package)}`,
-        `version=${encodeURIComponent(e.version)}`,
-      ];
-      // The catalogue entry this came from. A distribution name is not an
-      // identity: it can be renamed, and two entries could ship the same
-      // package, so the engine records the slug rather than inferring it from a
-      // filename. Omitted when unknown rather than sent empty.
-      if (e.slug) parts.push(`slug=${encodeURIComponent(e.slug)}`);
-      return parts.join("&");
-    })
-    .join("&");
-  return `web+aiscplugin://enable?${query}`;
+/** Remembers for the tab that a handshake from the platform was refused only
+ *  because its time had run out: the page then says to open the catalogue
+ *  again rather than to open it from the platform. */
+function noteIfExpired(p: unknown): void {
+  const v = p as HandshakePayload | null;
+  if (v && typeof v.url === "string" && typeof v.expires === "number"
+      && v.expires <= Date.now() && isPlatformAddress(v.url)) {
+    store().setItem(EXPIRED_KEY, "1");
+  }
 }
 
 function decodeHash(): HandshakePayload | null {
   const hash = window.location.hash;
   if (!hash.startsWith("#env=")) return null;
   try {
-    return validHandshake(JSON.parse(atob(hash.replace("#env=", ""))));
+    const payload = JSON.parse(atob(hash.replace("#env=", "")));
+    noteIfExpired(payload);
+    return validHandshake(payload);
   } catch (e) {
     console.error("Invalid handshake payload:", e);
   }
@@ -119,8 +108,10 @@ function readStoredPayload(): HandshakePayload | null {
   try {
     const raw = store().getItem(STORAGE_KEY);
     if (!raw) return null;
-    const payload = validHandshake(JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+    const payload = validHandshake(parsed);
     if (payload) return payload;
+    noteIfExpired(parsed);
     store().removeItem(STORAGE_KEY);
   } catch (e) {
     /* ignore corrupt entries */
@@ -128,30 +119,38 @@ function readStoredPayload(): HandshakePayload | null {
   return null;
 }
 
-function readStored(): string | null {
-  return readStoredPayload()?.url ?? null;
-}
-
 /** The whole stored handshake (or null if there is none or it expired). */
 export function getHandshake(): HandshakePayload | null {
   return readStoredPayload();
 }
 
-/** Consume a `#env=` handshake on load, if one is present. Returns the target
- *  origin (or null when there was no fresh handshake). */
-export function startCrossSiteSession(): string | null {
+/** Whether this tab's handshake ran out of time (the launcher gives an hour)
+ *  and no fresh one has arrived since. */
+export function handshakeExpired(): boolean {
+  try {
+    readStoredPayload();
+    return store().getItem(EXPIRED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Consume a `#env=` handshake on load, if one is present. Returns the
+ *  handshake kept for this tab (or null when there is none). */
+export function startCrossSiteSession(): HandshakePayload | null {
   const handshake = decodeHash();
   if (handshake) {
     store().setItem(STORAGE_KEY, JSON.stringify(handshake));
+    store().removeItem(EXPIRED_KEY);
     // Strip the token from the URL so it is never shared/history-logged.
     window.history.replaceState(
       null,
       "",
       window.location.pathname + window.location.search
     );
-    return handshake.url;
+    return handshake;
   }
-  return readStored();
+  return readStoredPayload();
 }
 
 // Capture any incoming `#env=` handshake at module load. App.tsx redirects
@@ -164,11 +163,6 @@ if (typeof window !== "undefined") {
   } catch (e) {
     /* ignore */
   }
-}
-
-/** The currently connected local-app origin (or null if expired/disconnected). */
-export function getTargetEnv(): string | null {
-  return readStored();
 }
 
 /** The project page the catalogue was opened from, while the handshake lasts.
@@ -186,39 +180,4 @@ export function isPlatformAddress(url: string): boolean {
   if (!isHttpUrl(url)) return false;
   const { origin } = new URL(url);
   return origin === window.location.origin || BACK_ORIGINS.includes(origin);
-}
-
-export function disconnectTargetEnv(): void {
-  store().removeItem(STORAGE_KEY);
-}
-
-/**
- * Route "enable plugin" URIs to the local app.
- *
- * When we know the local origin (handshake), open it directly at its `/receiver`
- * route. Otherwise fire the registered `web+aiscplugin` protocol handler. Either
- * way we open a NEW tab and focus it (no service worker, no tab reuse). Returns
- * the opened window (or null).
- */
-export function dispatchInstall(
-  targetEnv: string | null,
-  entries: InstallEntry[],
-  /** The platform project the catalogue was opened from; the webapp preselects it. */
-  project?: string | null
-): Window | null {
-  const uri = buildEnableUri(entries);
-  // The handshake comes from a URL fragment, which anyone can write: only an
-  // absolute http(s) address is a place to send somebody, and only a uuid is
-  // a project. Anything else falls back to the custom protocol.
-  const safeEnv = targetEnv && /^https?:\/\//i.test(targetEnv) ? targetEnv : null;
-  const inProject = project && PID.test(project) ? `project=${encodeURIComponent(project)}&` : "";
-  const win = safeEnv
-    ? window.open(`${safeEnv}/receiver?${inProject}uri=${encodeURIComponent(uri)}`)
-    : window.open(uri);
-  try {
-    win?.focus();
-  } catch {
-    /* ignore */
-  }
-  return win;
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import Catalogue from "./Catalogue";
 import { CrossSiteProvider } from "../crossSite/CrossSiteContext";
 import type { Tool, Tag } from "../services/catalogueApi";
@@ -263,6 +263,35 @@ describe("Catalogue page of a project", () => {
     fireEvent.click(screen.getByRole("button", { name: "install Fair" }));
     expect(await screen.findByText("Installed")).toBeInTheDocument();
     expect(fetchToolsDetailed).toHaveBeenCalledTimes(1);
+  });
+
+  it("a dimension and one of its sub-dimensions show only the entries of that sub-dimension", async () => {
+    const ROBUSTNESS = "technical-robustness-safety";
+    const named = (slug: string, label: string, section: Tag["section"], parent?: string) =>
+      ({ ...tag(slug, section, parent), label });
+    const robustness = named(ROBUSTNESS, "Technical Robustness and Safety", "dimension");
+    const injection = named("prompt-injection", "Prompt Injection", "testing_subdim", ROBUSTNESS);
+    const stress = named("stress-testing", "Stress testing", "testing_subdim", ROBUSTNESS);
+    const testEntry = (id: number, name: string, tags: Tag[]) =>
+      ({ ...tool(id, name, []), tags: [tag("test", "type"), ...tags] }) as Tool;
+    vi.mocked(fetchToolsDetailed).mockResolvedValue([
+      testEntry(11, "Injector", [robustness, injection]),
+      testEntry(12, "Stresser", [robustness, stress]),
+      testEntry(13, "Robust", [robustness]),
+    ]);
+    vi.mocked(fetchTags).mockResolvedValue([robustness, injection, stress]);
+    vi.mocked(fetchProjectDimensions).mockResolvedValue([]);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /tests/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Technical Robustness and Safety" }));
+    expect(await screen.findByText("Stresser")).toBeInTheDocument();
+    expect(screen.getByText("Injector")).toBeInTheDocument();
+    expect(screen.getByText("Robust")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Prompt Injection" }));
+    expect(screen.getByText("Injector")).toBeInTheDocument();
+    expect(screen.queryByText("Stresser")).toBeNull();
+    expect(screen.queryByText("Robust")).toBeNull();
   });
 
   it("serves the footer images under the build's base path", async () => {

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router";
 import Catalogue from "./pages/Catalogue";
 import Metrics from "./pages/Metrics";
 

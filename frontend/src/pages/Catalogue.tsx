@@ -9,6 +9,7 @@ import type { Tool, Tag } from "../services/catalogueApi";
 import { fetchToolsDetailed, fetchTags } from "../services/catalogueApi";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { entryKind } from "../components/catalogue/entry";
+import { matchesDimensions, subDimensionParents } from "../components/catalogue/dimensions";
 import {
   fetchProjectCatalogue,
   updateFromPublic,
@@ -149,7 +150,6 @@ const Catalogue: React.FC = () => {
   const [filters, setFilters] = useState<SidebarFilters>({
     tab: "controls",
     selectedDimensions: [],
-    selectedSectors: [],
     selectedAiSystems: [],
     selectedLicenses: [],
     selectedSources: [],
@@ -208,6 +208,13 @@ const Catalogue: React.FC = () => {
     }
   };
 
+  // Each sub-dimension's dimension: from the catalogue's tags, and from the
+  // entries' own in case a tag is missing from the list.
+  const parents = useMemo(
+    () => subDimensionParents([...tags, ...tools.flatMap((t) => t.tags ?? [])]),
+    [tags, tools]
+  );
+
   // ── Filter tools based on sidebar + search ──
   const filteredTools = useMemo(() => {
     return tools.filter((tool) => {
@@ -230,47 +237,12 @@ const Catalogue: React.FC = () => {
       // dimensions; a sub-dimension counts for its parent. A project with no
       // dimensions yet shows everything.
       if (forProject && projectDimensions && projectDimensions.length > 0) {
-        const toolDims = toolTags
-          .filter(
-            (t) =>
-              t.section === "dimension" ||
-              t.section === "testing_subdim" ||
-              t.section === "controls_subdim"
-          )
-          .flatMap((t) => [t.slug, t.parent_dimension_slug ?? ""]);
-        if (!projectDimensions.some((d) => toolDims.includes(d))) return false;
+        if (!matchesDimensions(toolTags, projectDimensions, parents)) return false;
       }
 
-      // Filter by trustworthiness dimension
-      if (filters.selectedDimensions.length > 0) {
-        // The sidebar's dimension list includes sub-dimensions (testing_subdim /
-        // controls_subdim children) under each dimension, all toggled into
-        // selectedDimensions. Match those sections too, or selecting a
-        // sub-dimension on the left would match nothing.
-        const toolDimSlugs = toolTags
-          .filter(
-            (t) =>
-              t.section === "dimension" ||
-              t.section === "testing_subdim" ||
-              t.section === "controls_subdim"
-          )
-          .map((t) => t.slug);
-        const hasMatchingDimension = filters.selectedDimensions.some((slug) =>
-          toolDimSlugs.includes(slug)
-        );
-        if (!hasMatchingDimension) return false;
-      }
-
-      // Filter by sector
-      if (filters.selectedSectors.length > 0) {
-        const toolSectorLabels = toolTags
-          .filter((t) => t.section === "sector")
-          .map((t) => t.label);
-        const hasMatchingSector = filters.selectedSectors.some((label) =>
-          toolSectorLabels.includes(label)
-        );
-        if (!hasMatchingSector) return false;
-      }
+      // The sidebar's dimensions; a sub-dimension chosen under a dimension
+      // narrows it to the entries of the chosen sub-dimensions.
+      if (!matchesDimensions(toolTags, filters.selectedDimensions, parents)) return false;
 
       // Filter by AI system type
       if (filters.selectedAiSystems.length > 0) {
@@ -307,7 +279,7 @@ const Catalogue: React.FC = () => {
 
       return true;
     });
-  }, [tools, searchQuery, filters, pluginOnly, forProject, projectDimensions]);
+  }, [tools, searchQuery, filters, pluginOnly, forProject, projectDimensions, parents]);
 
   // ── Render ──
   return (

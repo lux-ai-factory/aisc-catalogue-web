@@ -1,13 +1,13 @@
 // A test is installed without leaving the project's catalogue, as a control is: "Install into this
 // project…" opens a dialog here, and Install asks the platform, on this page's own origin, to install it
-// into the catalogue's project. Opened without a project, a test still goes to the engine, which is on
-// another site.
+// into the catalogue's project. Opened without a project, nothing is offered: installs happen only through
+// a project.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import ToolDetailModal from "../components/catalogue/ToolDetailModal";
 import { CrossSiteProvider } from "./CrossSiteContext";
 import type { Tool } from "../services/catalogueApi";
-import { installTest } from "../services/catalogueApi";
+import { fetchInstallInfo, installTest } from "../services/catalogueApi";
 import { projectSlug } from "../services/projectCatalogue";
 
 vi.mock("../services/catalogueApi", () => ({
@@ -130,14 +130,29 @@ describe("installing a test stays in the project's catalogue", () => {
     expect(within(dialog).getByRole("button", { name: /^install$/i })).toBeEnabled();
   });
 
-  it("without a project, a test still goes to the engine", async () => {
+  it("a test already installed in the project says Installed instead of offering the install", async () => {
+    render(
+      <CrossSiteProvider>
+        <ToolDetailModal tool={{ ...test(), aisc_installed: true }} onClose={() => {}} />
+      </CrossSiteProvider>,
+    );
+    await screen.findByRole("dialog", { name: "LangBiTe" });
+    expect(screen.getByText("Installed")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /install into this project/i })).toBeNull();
+    expect(fetchInstallInfo).not.toHaveBeenCalled();
+  });
+
+  it("without a project, offers no install at all", async () => {
     vi.mocked(projectSlug).mockReturnValue(null);
     render(
       <CrossSiteProvider>
         <ToolDetailModal tool={test()} onClose={() => {}} />
       </CrossSiteProvider>,
     );
-    expect(await screen.findByRole("link", { name: /install into a project/i })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /install into this project/i })).toBeNull();
+    await screen.findByRole("dialog", { name: "LangBiTe" });
+    await waitFor(() => expect(fetchInstallInfo).not.toHaveBeenCalled());
+    expect(screen.queryByRole("link", { name: /install into/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /install into/i })).toBeNull();
+    expect(window.open).not.toHaveBeenCalled();
   });
 });

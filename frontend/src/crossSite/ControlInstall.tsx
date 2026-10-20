@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { isPlatformAddress, type HandshakePayload } from "./connect";
+import { EXPIRED_MESSAGE, isPlatformAddress, type HandshakePayload } from "./connect";
 import { controlsBase, controlsInstallUrl, projectParam } from "./controlsInstall";
 import { useFocusOnOpen } from "../hooks/useFocusOnOpen";
 
@@ -48,11 +48,14 @@ function fetchOffer(base: string, slug: string, handshake: HandshakePayload | nu
 export default function ControlInstall({
   slug,
   handshake,
+  expired = false,
   style,
   onInstalled,
 }: {
   slug: string;
   handshake: HandshakePayload | null;
+  /** The handshake ran out of time, so the page says to open the catalogue again. */
+  expired?: boolean;
   style: React.CSSProperties;
   onInstalled?: (slug: string) => void;
 }) {
@@ -69,7 +72,7 @@ export default function ControlInstall({
   if (!base || !fallback) {
     return (
       <span style={{ color: "#6b7280", fontSize: 13, alignSelf: "center" }}>
-        Open the catalogue from your platform to install this control.
+        {expired ? EXPIRED_MESSAGE : "Open the catalogue from your platform to install this control."}
       </span>
     );
   }

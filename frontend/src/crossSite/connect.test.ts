@@ -1,10 +1,6 @@
 import { vi } from "vitest";
 import {
-  buildEnableUri,
-  dispatchInstall,
   startCrossSiteSession,
-  getTargetEnv,
-  disconnectTargetEnv,
   STORAGE_KEY,
   getHandshake,
   isPlatformAddress,
@@ -15,50 +11,17 @@ describe("connect", () => {
     sessionStorage.clear();
     // each test starts on a plain address, without a fragment left by the one before
     window.history.replaceState(null, "", "/");
-    (window as any).open = vi.fn().mockReturnValue({ focus: vi.fn() });
   });
 
-  it("builds a batching enable URI from multiple packages", () => {
-    expect(
-      buildEnableUri([
-        { package: "a", version: "1.0" },
-        { package: "b", version: "2.0" },
-      ])
-    ).toBe("web+aiscplugin://enable?package=a&version=1.0&package=b&version=2.0");
-  });
-
-  it("opens the local receiver directly and focuses it when handshake-known", () => {
-    const open = window.open as unknown as ReturnType<typeof vi.fn>;
-    dispatchInstall("http://localhost", [
-      { package: "a", version: "1" },
-      { package: "b", version: "2" },
-    ]);
-    expect(open).toHaveBeenCalledTimes(1);
-    const url = open.mock.calls[0][0] as string;
-    expect(url.startsWith("http://localhost/receiver?uri=")).toBe(true);
-    expect(decodeURIComponent(url)).toContain("package=a");
-    expect(decodeURIComponent(url)).toContain("package=b");
-    expect(open.mock.results[0].value.focus).toHaveBeenCalled();
-  });
-
-  it("fires the protocol scheme when no handshake is known", () => {
-    const open = window.open as unknown as ReturnType<typeof vi.fn>;
-    dispatchInstall(null, [{ package: "a", version: "1" }]);
-    expect(open).toHaveBeenCalledWith(
-      "web+aiscplugin://enable?package=a&version=1"
-    );
-    expect(open.mock.results[0].value.focus).toHaveBeenCalled();
-  });
-
-  it("consumes a valid #env handshake and persists the target", () => {
+  it("consumes a valid #env handshake and keeps it for the tab", () => {
     const payload = {
       url: "http://localhost",
       expires: Date.now() + 60_000,
     };
     window.location.hash = "#env=" + btoa(JSON.stringify(payload));
 
-    expect(startCrossSiteSession()).toBe("http://localhost");
-    expect(getTargetEnv()).toBe("http://localhost");
+    expect(startCrossSiteSession()).toEqual(payload);
+    expect(getHandshake()).toEqual(payload);
     // The token should be stripped from the URL.
     expect(window.location.hash).toBe("");
   });
@@ -70,23 +33,12 @@ describe("connect", () => {
     };
     window.location.hash = "#env=" + btoa(JSON.stringify(payload));
     expect(startCrossSiteSession()).toBeNull();
-    expect(getTargetEnv()).toBeNull();
+    expect(getHandshake()).toBeNull();
   });
 
   it("rejects a malformed handshake", () => {
     window.location.hash = "#env=not-base64-json";
     expect(startCrossSiteSession()).toBeNull();
-  });
-
-  it("returns null after disconnect", () => {
-    const payload = {
-      url: "http://localhost",
-      expires: Date.now() + 60_000,
-    };
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    expect(getTargetEnv()).toBe("http://localhost");
-    disconnectTargetEnv();
-    expect(getTargetEnv()).toBeNull();
   });
 
   const encode = (p: object) => "#env=" + btoa(JSON.stringify(p));
@@ -96,14 +48,14 @@ describe("connect", () => {
                       controls: "http://localhost/controls",
                       project: "0b8e7d3c-1f2a-4b5c-9d6e-7f8a9b0c1d2e" };
     window.history.replaceState(null, "", "/" + encode(payload));
-    expect(startCrossSiteSession()).toBe("http://localhost");
+    expect(startCrossSiteSession()).toEqual(payload);
     expect(getHandshake()).toEqual(payload);
   });
 
   it("still accepts an old handshake with only url and expires", () => {
     const payload = { url: "http://localhost", expires: Date.now() + 60_000 };
     window.history.replaceState(null, "", "/" + encode(payload));
-    expect(startCrossSiteSession()).toBe("http://localhost");
+    expect(startCrossSiteSession()).toEqual(payload);
     expect(getHandshake()).toEqual(payload);
   });
 

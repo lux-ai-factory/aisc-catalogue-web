@@ -5,7 +5,7 @@
  *   http://localhost and http://localhost:8100), not any http(s) address;
  * - a handshake that claims to last more than an hour is refused.
  */
-import { getBackUrl, getHandshake, startCrossSiteSession, STORAGE_KEY } from "./connect";
+import { getBackUrl, getHandshake, handshakeExpired, startCrossSiteSession, STORAGE_KEY } from "./connect";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -52,5 +52,27 @@ describe("handshake limits", () => {
     expect(window.location.origin).not.toBe("http://localhost");
     open({ url: "http://localhost", expires: Date.now() + HOUR - 1000, back: own });
     expect(getBackUrl()).toBe(own);
+  });
+
+  it("remembers that the tab's handshake expired, until a fresh one arrives", () => {
+    expect(handshakeExpired()).toBe(false);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ url: "http://localhost", expires: Date.now() - 1 }));
+    expect(getHandshake()).toBeNull();
+    expect(handshakeExpired()).toBe(true);
+    expect(handshakeExpired()).toBe(true);
+    open({ url: "http://localhost", expires: Date.now() + HOUR - 1000 });
+    expect(handshakeExpired()).toBe(false);
+  });
+
+  it("a link whose handshake is past its hour counts as expired too", () => {
+    open({ url: "http://localhost", expires: Date.now() - 1 });
+    expect(handshakeExpired()).toBe(true);
+  });
+
+  it("a handshake refused for another reason is not an expired one", () => {
+    open({ url: "http://localhost", expires: Date.now() + 10 * HOUR });
+    expect(handshakeExpired()).toBe(false);
+    open({ url: "https://evil.example", expires: Date.now() - 1 });
+    expect(handshakeExpired()).toBe(false);
   });
 });

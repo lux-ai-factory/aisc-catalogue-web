@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 // Pill-shaped navigation link (rounded, light-blue fill, bold blue text) used
 // for the switches between the catalogue and the metrics page: "Explore

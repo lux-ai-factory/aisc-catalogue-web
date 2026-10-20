@@ -2,8 +2,8 @@
 // project…" opens a dialog here, which asks the platform's controls app (from
 // the browser, with the person's sign-in) which projects may get it, and installs
 // into the chosen one. The catalogue stays open: the dialog says it is
-// installed and links to the checklist in a new tab, as a test's install opens the
-// engine in one, so several controls can be installed in a row.
+// installed and links to the checklist in a new tab, so several controls can be
+// installed in a row.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import ToolDetailModal from "../components/catalogue/ToolDetailModal";

@@ -1,224 +1,7 @@
 import React, { useState } from "react";
 import type { Tag } from "../../services/catalogueApi";
+import { dimensionTree, inSortOrder } from "./dimensions";
 
-
-interface DimensionItem {
-  label: string;
-  slug: string;
-  children?: { label: string; slug: string }[];
-}
-
-const TEST_TRUSTWORTHINESS_DIMENSIONS: DimensionItem[] = [
-  {
-    label: "Human Agency and Oversight",
-    slug: "human-agency-oversight",
-    children: [
-      { label: "Override & opt-out mechanism testing", slug: "override-opt-out-mechanism-testing" },
-      { label: "Audit trail & logging completeness", slug: "audit-trail-logging-completeness" },
-    ],
-  },
-  {
-    label: "Technical Robustness and Safety",
-    slug: "technical-robustness-safety",
-    children: [
-      { label: "Stress testing", slug: "stress-testing" },
-      { label: "Adversarial input testing", slug: "adversarial-input-testing" },
-      { label: "Out-of-distribution testing", slug: "out-of-distribution-testing" },
-      { label: "Drift detection", slug: "drift-detection" },
-      { label: "Chaos engineering", slug: "chaos-engineering" },
-      { label: "Model calibration", slug: "model-calibration" },
-      { label: "Prompt Injection", slug: "prompt-injection" },
-      { label: "Insecure Output Handling", slug: "insecure-output-handling" },
-      { label: "Training Data Poisoning", slug: "training-data-poisoning" },
-      { label: "Denial of Service", slug: "denial-of-service" },
-      { label: "Sensitive Information Disclosure", slug: "sensitive-information-disclosure" },
-      { label: "Insecure Plugin Design", slug: "insecure-plugin-design" },
-      { label: "Excessive Agency", slug: "excessive-agency" },
-      { label: "Overreliance", slug: "overreliance" },
-      { label: "Model Theft", slug: "model-theft" },
-    ],
-  },
-  {
-    label: "Privacy and Data Governance",
-    slug: "privacy-data-governance",
-    children: [
-      { label: "Encryption testing", slug: "encryption-testing" },
-      { label: "PII detection testing", slug: "pii-detection-testing" },
-      { label: "Data anonymisation / re-identification risk", slug: "data-anonymisation-re-identification-risk" },
-      { label: "Data retention policy violation detection", slug: "data-retention-policy-violation-detection" },
-      { label: "Access control testing", slug: "access-control-testing" },
-    ],
-  },
-  {
-    label: "Transparency",
-    slug: "transparency",
-    children: [
-      { label: "Local interpretability", slug: "local-interpretability" },
-      { label: "Global interpretability", slug: "global-interpretability" },
-      { label: "Explanation consistency testing", slug: "explanation-consistency-testing" },
-    ],
-  },
-  {
-    label: "Diversity, Non-discrimination and Fairness",
-    slug: "diversity-non-discrimination-fairness",
-    children: [
-      { label: "Bias detection on data", slug: "bias-detection-on-data" },
-      { label: "Bias detection on system", slug: "bias-detection-on-system" },
-    ],
-  },
-  {
-    label: "Societal and Environmental Wellbeing",
-    slug: "societal-environmental-wellbeing",
-    children: [
-      { label: "Energy consumption tracking", slug: "energy-consumption-tracking" },
-      { label: "Hardware utilisation profiling", slug: "hardware-utilisation-profiling" },
-    ],
-  },
-];
-
-const CONTROL_TRUSTWORTHINESS_DIMENSIONS: DimensionItem[] = [
-  {
-    label: "Human Agency and Oversight",
-    slug: "human-agency-oversight",
-    children: [
-      { label: "Supervisory control", slug: "supervisory-control" },
-      { label: "Strategic governance", slug: "strategic-governance" },
-      { label: "Informed consent", slug: "informed-consent" },
-      { label: "User preferences", slug: "user-preferences" },
-      { label: "Audit trails", slug: "audit-trails" },
-    ],
-  },
-  {
-    label: "Technical Robustness and Safety",
-    slug: "technical-robustness-safety",
-    children: [
-      { label: "Fail-over architecture", slug: "fail-over-architecture" },
-      { label: "Human fallback", slug: "human-fallback" },
-    ],
-  },
-  {
-    label: "Privacy and Data Governance",
-    slug: "privacy-data-governance",
-    children: [
-      { label: "Purpose limitation", slug: "purpose-limitation" },
-      { label: "Scope restriction", slug: "scope-restriction" },
-      { label: "Pseudonymisation", slug: "pseudonymisation" },
-      { label: "Role-based access control", slug: "role-based-access-control" },
-      { label: "Lineage tracking", slug: "lineage-tracking" },
-      { label: "Metadata versioning", slug: "metadata-versioning" },
-      { label: "Consent tracking", slug: "consent-tracking" },
-      { label: "Granular revocation", slug: "granular-revocation" },
-    ],
-  },
-  {
-    label: "Transparency",
-    slug: "transparency",
-    children: [
-      { label: "Model cards", slug: "model-cards" },
-      { label: "Datasheets", slug: "datasheets" },
-      { label: "AI identity notices", slug: "ai-identity-notices" },
-      { label: "Disclaimers", slug: "disclaimers" },
-      { label: "Risk communication", slug: "risk-communication" },
-      { label: "Understandable language", slug: "understandable-language" },
-    ],
-  },
-  {
-    label: "Diversity, Non-discrimination and Fairness",
-    slug: "diversity-non-discrimination-fairness",
-    children: [
-      { label: "Sampling strategies", slug: "sampling-strategies" },
-      { label: "Accessibility", slug: "accessibility" },
-      { label: "Participatory design", slug: "participatory-design" },
-    ],
-  },
-  {
-    label: "Societal and Environmental Well-being",
-    slug: "societal-environmental-wellbeing",
-    children: [
-      { label: "Rights-based system", slug: "rights-based-system" },
-      { label: "Independent ethics committee", slug: "independent-ethics-committee" },
-    ],
-  },
-  {
-    label: "Accountability",
-    slug: "accountability",
-    children: [
-      { label: "RASCI charts", slug: "rasci-charts" },
-      { label: "Logging", slug: "logging" },
-      { label: "External reporting interfaces", slug: "external-reporting-interfaces" },
-      { label: "Redress systems", slug: "redress-systems" },
-      { label: "Version-controlled records", slug: "version-controlled-records" },
-    ],
-  },
-  {
-    label: "Quality Management",
-    slug: "quality-management",
-    children: [
-      { label: "Quality Policy Declaration", slug: "quality-policy-declaration" },
-      { label: "Control of documented information", slug: "control-of-documented-information" },
-      { label: "Internal Auditing", slug: "internal-auditing" },
-      { label: "Continuous Improvement", slug: "continuous-improvement" },
-    ],
-  },
-  {
-    label: "Risk Management",
-    slug: "risk-management",
-    children: [
-      { label: "Description of AI system", slug: "description-of-ai-system" },
-      { label: "Structured risk identification", slug: "structured-risk-identification" },
-      { label: "Core classification step", slug: "core-classification-step" },
-      { label: "Finalise classification decision", slug: "finalise-classification-decision" },
-      { label: "Outline potential risk areas", slug: "outline-potential-risk-areas" },
-      { label: "Establishing PMM plan", slug: "establishing-pmm-plan" },
-      { label: "Perform CAPA", slug: "perform-capa" },
-      { label: "Compliant incident reporting", slug: "compliant-incident-reporting" },
-    ],
-  },
-  {
-    label: "Technical Documentation",
-    slug: "technical-documentation",
-    children: [
-      { label: "System overview and intended purpose", slug: "system-overview-and-intended-purpose" },
-      { label: "Architecture and design specifications", slug: "architecture-and-design-specifications" },
-      { label: "Dataset provenance", slug: "dataset-provenance" },
-      { label: "Structured compliance mapping", slug: "structured-compliance-mapping" },
-    ],
-  },
-  {
-    label: "Record-keeping",
-    slug: "record-keeping",
-    children: [
-      { label: "Operational logging system", slug: "operational-logging-system" },
-      { label: "Version control", slug: "version-control" },
-      { label: "Full lineage", slug: "full-lineage" },
-      { label: "Retention/deletion policies", slug: "retention-deletion-policies" },
-    ],
-  },
-];
-
-
-// Sector facet is hidden for now; flip to true to bring it back.
-const SHOW_SECTOR_FILTER = false;
-
-const SECTOR_OPTIONS = [
-  "Agriculture", "Competition", "Corporate governance", "Defence",
-  "Digital Economy", "Economy", "Education", "Employment & labour",
-  "Environment", "Finance and insurance", "Health", "Inclusive development",
-  "Industry & entrepreneurship", "Innovation", "Investment", "Other",
-  "Public governance", "Public sector", "Science & technology",
-  "Social & welfare issues", "Tax Transport", "Trade",
-];
-
-const AI_SYSTEM_OPTIONS = [
-  "Multimodal", "Computer Vision", "Natural Language Processing",
-  "Audio", "Knowledge & Retrieval",
-  "Recommendation & Personalization",
-  "Predictive & Analytical AI", "Anomaly Detection",
-  "Tabular & Structured Data", "Decision & Optimization",
-  "Reinforcement Learning & Control",
-  "Agents & Agentic Systems",
-  "AI Safety & Governance", "Other / Emerging",
-];
 
 const LICENSE_OPTIONS = ["Open", "Closed"];
 
@@ -355,7 +138,7 @@ const styles = {
     textAlign: "left" as const,
     whiteSpace: "nowrap" as const,
   }),
-  sectorPills: (active: boolean) => ({
+  sourcePills: (active: boolean) => ({
     display: "inline-block",
     padding: "4px 10px",
     margin: "2px 4px 2px 0",
@@ -424,7 +207,6 @@ export type CatalogueTab = "tests" | "controls";
 export interface SidebarFilters {
   tab: CatalogueTab;
   selectedDimensions: string[];
-  selectedSectors: string[];
   selectedAiSystems: string[];
   selectedLicenses: string[];
   selectedSources: string[];
@@ -433,7 +215,8 @@ export interface SidebarFilters {
 interface CatalogueSidebarProps {
   filters: SidebarFilters;
   onFiltersChange: (filters: SidebarFilters) => void;
-  /** Tags from the API, used to show dynamic labels if available */
+  /** The catalogue's tags: the dimensions, sub-dimensions, AI systems and
+   *  sources to filter by, with their labels and order. */
   tags?: Tag[];
   /** When true, render full-width (stacked above the cards) instead of a fixed rail. */
   isMobile?: boolean;
@@ -467,17 +250,19 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
   projectFilter,
 }) => {
   const [expandedDimensions, setExpandedDimensions] = useState<string[]>([]);
-  const [showAllSectors, setShowAllSectors] = useState(false);
   const [showAllAiSystems, setShowAllAiSystems] = useState(false);
 
-  const dimensions =
-    filters.tab === "controls" ? CONTROL_TRUSTWORTHINESS_DIMENSIONS : TEST_TRUSTWORTHINESS_DIMENSIONS;
+  const dimensions = dimensionTree(tags ?? [], filters.tab);
+  // The AI systems a test is made for: the catalogue's ai_type tags.
+  const aiSystemOptions = Array.from(
+    new Set(inSortOrder((tags ?? []).filter((t) => t.section === "ai_type")).map((t) => t.label))
+  );
 
   const toggleArrayItem = (arr: string[], item: string): string[] =>
     arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
 
   // One tab is always active. A click on either tab, the active one too,
-  // resets every facet: the test-only facets (sector / AI system / license)
+  // resets every facet: the test-only facets (AI system / license)
   // don't apply to controls and would otherwise hide every control if left
   // selected.
   const setTab = (tab: CatalogueTab) =>
@@ -485,7 +270,6 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
       ...filters,
       tab,
       selectedDimensions: [],
-      selectedSectors: [],
       selectedAiSystems: [],
       selectedLicenses: [],
       selectedSources: [],
@@ -501,12 +285,6 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
     setExpandedDimensions((prev) =>
       prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
     );
-
-  const toggleSector = (label: string) =>
-    onFiltersChange({
-      ...filters,
-      selectedSectors: toggleArrayItem(filters.selectedSectors, label),
-    });
 
   const toggleAiSystem = (label: string) =>
     onFiltersChange({
@@ -532,12 +310,9 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
     new Set((tags ?? []).filter((t) => t.section === "source").map((t) => t.label))
   ).sort();
 
-  const visibleSectors = showAllSectors
-    ? SECTOR_OPTIONS
-    : SECTOR_OPTIONS.slice(0, 8);
   const visibleAiSystems = showAllAiSystems
-    ? AI_SYSTEM_OPTIONS
-    : AI_SYSTEM_OPTIONS.slice(0, 6);
+    ? aiSystemOptions
+    : aiSystemOptions.slice(0, 6);
 
   return (
     <aside
@@ -654,13 +429,13 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
                 aria-pressed={isActive}
                 onClick={() => {
                   toggleDimension(dim.slug);
-                  if (dim.children) toggleExpandDimension(dim.slug);
+                  if (dim.children.length > 0) toggleExpandDimension(dim.slug);
                 }}
               >
                 {dim.label}
               </button>
               {/* Children as horizontal pills when expanded */}
-              {dim.children && (isExpanded || isActive) && (
+              {dim.children.length > 0 && (isExpanded || isActive) && (
                 <div style={styles.trustworthinesschildrenContainer}>
                   {dim.children.map((child) => {
                     const childActive = filters.selectedDimensions.includes(
@@ -693,7 +468,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
               <button
                 type="button"
                 key={s}
-                style={styles.sectorPills(filters.selectedSources.includes(s))}
+                style={styles.sourcePills(filters.selectedSources.includes(s))}
                 aria-pressed={filters.selectedSources.includes(s)}
                 onClick={() => toggleSource(s)}
               >
@@ -704,33 +479,10 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
         </>
       )}
 
-      {/* Sector, AI system, and License are test attributes, controls don't
-          carry them, so show these facets on the Tests tab only. */}
+      {/* AI system and License are test attributes, controls don't carry
+          them, so show these facets on the Tests tab only. */}
       {filters.tab === "tests" && (
         <>
-      {/* ── Sector ── */}
-      {SHOW_SECTOR_FILTER && (
-        <>
-      <div style={styles.sectionTitle}>Sector</div>
-      <div>
-        {visibleSectors.map((s) => (
-          <span
-            key={s}
-            style={styles.sectorPills(filters.selectedSectors.includes(s))}
-            onClick={() => toggleSector(s)}
-          >
-            {s}
-          </span>
-        ))}
-      </div>
-      {SECTOR_OPTIONS.length > 8 && (
-        <button style={styles.seeMore} onClick={() => setShowAllSectors((v) => !v)}>
-          {showAllSectors ? "See less" : "See more +"}
-        </button>
-      )}
-        </>
-      )}
-
       {/* ── AI system under assessment ── */}
       <div style={styles.sectionTitle}>AI system under assessment</div>
       <div>
@@ -746,7 +498,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
           </button>
         ))}
       </div>
-      {AI_SYSTEM_OPTIONS.length > 6 && (
+      {aiSystemOptions.length > 6 && (
         <button
           style={styles.seeMore}
           onClick={() => setShowAllAiSystems((v) => !v)}

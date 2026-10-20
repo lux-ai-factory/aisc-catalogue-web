@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useIsMobile } from "../hooks/useIsMobile";
-import ConnectionBanner from "../crossSite/ConnectionBanner";
 import { useCrossSite } from "../crossSite/CrossSiteContext";
 import AboutCatalogueModal from "./AboutCatalogueModal";
+import { EXPIRED_MESSAGE } from "../crossSite/connect";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +61,10 @@ const s = {
     padding: "6px 12px",
     whiteSpace: "nowrap" as const,
   },
+  expired: {
+    color: "#fff",
+    fontSize: "13px",
+  },
 };
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -71,10 +75,12 @@ interface LayoutProps {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-/** Present when the catalogue was opened from a project: the handshake that
- *  says where to install also says where it came from. */
+/** Present when the catalogue was opened from a project: the launcher's
+ *  handshake says which page it came from. Once the handshake has run out of
+ *  time, it says how to get one again. */
 const BackLink: React.FC = () => {
-  const { backUrl } = useCrossSite();
+  const { backUrl, expired } = useCrossSite();
+  if (!backUrl && expired) return <span style={s.expired}>{EXPIRED_MESSAGE}</span>;
   if (!backUrl) return null;
   return (
     <a href={backUrl} style={s.back} aria-label="Back to the project">
@@ -125,7 +131,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <BackLink />
         </div>
       </header>
-      <ConnectionBanner />
       {children}
       {showAbout && <AboutCatalogueModal onClose={() => setShowAbout(false)} />}
     </div>
