@@ -1,27 +1,27 @@
 # NOTICE
 
-This product includes software, originally developed as the **AISC** project, by Maxime Cordy and Thibault Simonetto, at the **Université du Luxembourg and Luxembourg Institute of Science and Technology**, **Interdisciplinary Centre for Security, Reliability and Trust (SnT)**, **SerVal Research Group**.
+AISC catalogue (local)
+(part of the AI Assessment Sandbox Configurator)
 
-© 2024–2026 Université du Luxembourg and Luxembourg Institute of Science and Technology. All rights reserved.  
+Copyright (c) 2025-2026
+- Interdisciplinary Centre for Security, Reliability and Trust (SnT), University of Luxembourg
+- Luxembourg Institute of Science and Technology (LIST)
 
+This software is co-developed and co-maintained by SnT and LIST.
 
----
+This project is funded under the Luxembourg AI Factory, Horizon Europe grant agreement No. 101234366.
 
-## License
+This distribution is provided under the Apache License, Version 2.0.
+See the `LICENSE.md` file for the full license text.
 
-This software is licensed under the [Apache License, Version 2.0](LICENSE.md).
+## Third-party notices
 
----
+This product may include third-party components that are subject to separate copyright notices,
+license terms, or attribution requirements.
 
-## Acknowledgements
+Where required, those notices and attributions should be listed in this file or in a clearly
+referenced licenses directory included with the distribution.
 
-This project may include or depend on third-party components distributed under their respective open source licenses.  
-Attribution notices for such dependencies, if any, are included here or in their respective subdirectories.
-
----
-
-## Contributors
-
-We gratefully acknowledge contributions from external collaborators.
-
-All contributions are made under the terms of the project's Contributor License Agreement (CLA).
+The catalogue pages (`frontend/`) are built from npm packages that carry their own licences; they are listed
+with their licences in `frontend/package-lock.json`. The catalogue entries the pages show are data served by
+the AISC platform, not part of this repository.
