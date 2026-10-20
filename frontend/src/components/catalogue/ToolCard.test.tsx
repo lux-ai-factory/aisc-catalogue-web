@@ -1,3 +1,4 @@
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ToolCard from "./ToolCard";
@@ -105,5 +106,21 @@ describe("ToolCard from the keyboard", () => {
     screen.getByRole("button", { name: "View details of MLA-BiTe" }).click();
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("i")).toBeNull();
+  });
+});
+
+const card = (tool: Tool) => render(<ToolCard tool={tool} variant="tests" onClick={() => {}} />);
+
+describe("ToolCard project badges", () => {
+  it("shows Local and Installed when the entry carries them", () => {
+    card(makeTool({ aisc_local: true, aisc_installed: true }));
+    expect(screen.getByText("Local")).toBeInTheDocument();
+    expect(screen.getByText("Installed")).toBeInTheDocument();
+  });
+
+  it("shows neither when the flags are false or absent", () => {
+    card(makeTool({ aisc_local: false }));
+    expect(screen.queryByText("Local")).toBeNull();
+    expect(screen.queryByText("Installed")).toBeNull();
   });
 });

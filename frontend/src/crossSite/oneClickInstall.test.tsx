@@ -1,4 +1,6 @@
-// One-click install works the same way for tests and controls.
+// A test opened without a project goes to the engine in one click: one new tab on the webapp's receiver,
+// carrying the project only when it is a uuid. Its button looks like a control's, which opens the
+// platform's install dialog instead (controlInstallDialog.test.tsx).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ToolDetailModal from "../components/catalogue/ToolDetailModal";
@@ -27,7 +29,7 @@ beforeEach(() => {
 
 describe("dispatchInstall carries the project, and only safe values", () => {
   it("opens <targetEnv>/receiver?project=<pid>&uri=<enable URI> for a uuid project", () => {
-    (dispatchInstall as any)("http://localhost/webapp", [ENTRY], PID);
+    dispatchInstall("http://localhost/webapp", [ENTRY], PID);
     expect(openMock()).toHaveBeenCalledTimes(1);
     expect(openMock().mock.calls[0][0]).toBe(
       `http://localhost/webapp/receiver?project=${PID}&uri=${encodeURIComponent(buildEnableUri([ENTRY]))}`
@@ -35,7 +37,7 @@ describe("dispatchInstall carries the project, and only safe values", () => {
   });
 
   it("drops a project that is not a uuid", () => {
-    (dispatchInstall as any)("http://localhost/webapp", [ENTRY], "../../evil");
+    dispatchInstall("http://localhost/webapp", [ENTRY], "../../evil");
     const url = openMock().mock.calls[0][0] as string;
     expect(url).not.toContain("project=");
     expect(url).not.toContain("evil");
@@ -43,12 +45,12 @@ describe("dispatchInstall carries the project, and only safe values", () => {
   });
 
   it("never opens a non-http(s) targetEnv, falls back to the custom protocol", () => {
-    (dispatchInstall as any)("javascript:alert(1)//", [ENTRY], PID);
+    dispatchInstall("javascript:alert(1)//", [ENTRY], PID);
     expect(openMock()).toHaveBeenCalledWith(buildEnableUri([ENTRY]));
   });
 
   it("rejects a scheme-relative targetEnv too", () => {
-    (dispatchInstall as any)("//elsewhere.example", [ENTRY], PID);
+    dispatchInstall("//elsewhere.example", [ENTRY], PID);
     expect(openMock()).toHaveBeenCalledWith(buildEnableUri([ENTRY]));
   });
 });
@@ -120,6 +122,14 @@ describe("the same button for tests and controls", () => {
     show(controlTool());
     const controlStyle = (await screen.findByRole("link", { name: LABEL })).getAttribute("style");
     expect(testStyle).toBe(controlStyle);
+  });
+
+  it("says the tab could not be opened when the browser blocks it", async () => {
+    (window as any).open = vi.fn().mockReturnValue(null);
+    show(makeTool());
+    fireEvent.click(await screen.findByRole("link", { name: LABEL }));
+    expect(await screen.findByText(/Couldn’t open a new tab/)).toBeInTheDocument();
+    expect(screen.queryByText(/Opened your local app/)).toBeNull();
   });
 
   it("clicking install on a test opens one tab on the webapp receiver with the project", async () => {

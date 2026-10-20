@@ -95,6 +95,41 @@ describe("installing a test stays in the project's catalogue", () => {
     expect(screen.getByRole("dialog", { name: "LangBiTe" })).toBeInTheDocument();
   });
 
+  it("Cancel closes it, and Close once it is installed", async () => {
+    vi.mocked(installTest).mockResolvedValue({ slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1" });
+    let dialog = await openDialog();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /install a test/i })).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: /install into this project/i }));
+    dialog = await screen.findByRole("dialog", { name: /install a test/i });
+    fireEvent.click(within(dialog).getByRole("button", { name: /^install$/i }));
+    await within(dialog).findByText(/installed in this project/i);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /install a test/i })).toBeNull());
+    expect(screen.getByRole("dialog", { name: "LangBiTe" })).toBeInTheDocument();
+  });
+
+  it("says Installing… and disables the button while the install runs", async () => {
+    vi.mocked(installTest).mockReturnValue(new Promise(() => {}));
+    const dialog = await openDialog();
+    fireEvent.click(within(dialog).getByRole("button", { name: /^install$/i }));
+    expect(within(dialog).getByRole("button", { name: "Installing…" })).toBeDisabled();
+  });
+
+  it("opens again without the last attempt's error", async () => {
+    vi.mocked(installTest).mockRejectedValue({ response: { data: { detail: "Installing a test takes the admin role." } } });
+    let dialog = await openDialog();
+    fireEvent.click(within(dialog).getByRole("button", { name: /^install$/i }));
+    await within(dialog).findByText("Installing a test takes the admin role.");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /install into this project/i }));
+    dialog = await screen.findByRole("dialog", { name: /install a test/i });
+    expect(within(dialog).queryByText("Installing a test takes the admin role.")).toBeNull();
+    expect(within(dialog).getByRole("button", { name: /^install$/i })).toBeEnabled();
+  });
+
   it("without a project, a test still goes to the engine", async () => {
     vi.mocked(projectSlug).mockReturnValue(null);
     render(

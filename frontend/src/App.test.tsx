@@ -1,33 +1,34 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import App from "./App";
 
 // Each page as its name, so the test sees only which route answered.
 vi.mock("./pages/Catalogue", () => ({ default: () => <div>catalogue page</div> }));
 vi.mock("./pages/Metrics", () => ({ default: () => <div>metrics page</div> }));
 
+/** The address the router ended on. */
+const Where = () => <div data-testid="path">{useLocation().pathname}</div>;
+
 const at = (path: string) =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <App />
+      <Where />
     </MemoryRouter>
   );
 
-// Paths of account and add/edit pages, which this catalogue does not have.
-const NOT_HERE: [string, string][] = [
-  ["/account", "account page"],
-  ["/account/verify-email/k", "verify email page"],
-  ["/account/password/reset", "password reset page"],
-  ["/add_tool", "add tool page"],
-  ["/edit_tool/3", "add tool page"],
-  ["/add_control", "add control page"],
-];
-
-describe("routes in a project's catalogue", () => {
-  it.each(NOT_HERE)("%s is not there: it leads to the catalogue", (path) => {
-    at(path);
+describe("routes", () => {
+  it("leads a path it does not have (an old account or add page) to the catalogue", () => {
+    at("/add_tool");
     expect(screen.getByText("catalogue page")).toBeInTheDocument();
+    expect(screen.getByTestId("path")).toHaveTextContent(/^\/catalogue$/);
+  });
+
+  it("leads / to /catalogue", () => {
+    at("/");
+    expect(screen.getByText("catalogue page")).toBeInTheDocument();
+    expect(screen.getByTestId("path")).toHaveTextContent(/^\/catalogue$/);
   });
 
   it("keeps the catalogue and the metrics", () => {

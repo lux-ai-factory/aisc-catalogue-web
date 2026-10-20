@@ -211,6 +211,61 @@ describe("installing a control stays in the catalogue", () => {
     expect(screen.getByRole("dialog", { name: "Accuracy checklist" })).toBeInTheDocument();
   });
 
+  it("says nothing was installed when the install gets no answer", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      init?.method === "POST" ? Promise.reject(new TypeError("Failed to fetch")) : json(OPTIONS),
+    );
+    const dialog = await openDialog();
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Install" }));
+    expect(await within(dialog).findByText("Your platform did not answer. Nothing was installed.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Install" })).toBeEnabled();
+  });
+
+  it("does not claim an install the answer does not show: a 200 without the checklist's path", async () => {
+    const onInstalled = vi.fn();
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      init?.method === "POST" ? json({ created: true }) : json(OPTIONS),
+    );
+    const dialog = await openDialog(onInstalled);
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Install" }));
+    expect(await within(dialog).findByText("The platform did not install it.")).toBeInTheDocument();
+    expect(within(dialog).queryByText(/^Installed in/)).toBeNull();
+    expect(onInstalled).not.toHaveBeenCalled();
+  });
+
+  it("says it could not offer the control when the offer is not JSON (a sign-in page)", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(new Response("<html>sign in</html>", { status: 200, headers: { "content-type": "text/html" } })),
+    );
+    const dialog = await openDialog();
+    expect(await within(dialog).findByText("The platform could not offer this control.")).toBeInTheDocument();
+  });
+
+  it("chooses the first project when the platform preselects none", async () => {
+    fetchMock.mockImplementation(() =>
+      json({ ...OPTIONS, projects: [{ pid: P2, name: "Other" }, { pid: P1, name: "MCAS" }], preselect: null }),
+    );
+    const dialog = await openDialog();
+    expect(((await within(dialog).findByLabelText("Project")) as HTMLSelectElement).value).toBe(P2);
+  });
+
+  it("says Installing… and disables the button while the install runs", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      init?.method === "POST" ? new Promise(() => {}) : json(OPTIONS),
+    );
+    const dialog = await openDialog();
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Install" }));
+    expect(await within(dialog).findByRole("button", { name: "Installing…" })).toBeDisabled();
+  });
+
+  it("closes when the overlay around it is clicked", async () => {
+    const dialog = await openDialog();
+    await within(dialog).findByText("Accuracy checklist");
+    fireEvent.click(dialog.parentElement!);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /install a control/i })).toBeNull());
+    expect(screen.getByRole("dialog", { name: "Accuracy checklist" })).toBeInTheDocument();
+  });
+
   it("does not ask install-info for a control: its install never uses it", async () => {
     await openDialog();
     expect(fetchInstallInfo).not.toHaveBeenCalled();

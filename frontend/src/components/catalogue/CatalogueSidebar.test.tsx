@@ -1,3 +1,4 @@
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CatalogueSidebar from "./CatalogueSidebar";
@@ -164,5 +165,41 @@ describe("CatalogueSidebar selected filters look selected", () => {
     ]) {
       expect(bg(on)).not.toBe(bg(off));
     }
+  });
+});
+
+// on the Controls tab, as the catalogue opens
+const controlsProps = (over: Record<string, unknown> = {}) =>
+  baseProps({ filters: makeFilters({ tab: "controls" }), ...over });
+
+describe("CatalogueSidebar 'For this project' switch", () => {
+  it("is not shown without the project filter prop", () => {
+    render(<CatalogueSidebar {...(controlsProps() as any)} />);
+    expect(screen.queryByText("For this project")).toBeNull();
+  });
+
+  it("shows the switch and reports a flip", () => {
+    const onChange = vi.fn();
+    render(
+      <CatalogueSidebar
+        {...(controlsProps({ projectFilter: { on: true, onChange, noDimensions: false } }) as any)}
+      />
+    );
+    const sw = screen.getByRole("switch", { name: /for this project/i });
+    expect(sw).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(sw);
+    expect(onChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByText(/No control objectives selected yet/)).toBeNull();
+  });
+
+  it("notes that everything shows when the project has no dimensions yet", () => {
+    render(
+      <CatalogueSidebar
+        {...(controlsProps({ projectFilter: { on: true, onChange: vi.fn(), noDimensions: true } }) as any)}
+      />
+    );
+    expect(
+      screen.getByText("No control objectives selected yet: showing everything.")
+    ).toBeInTheDocument();
   });
 });

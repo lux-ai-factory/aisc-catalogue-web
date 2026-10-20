@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ToolDetailModal from "./ToolDetailModal";
 import { CrossSiteProvider } from "../../crossSite/CrossSiteContext";
+import { STORAGE_KEY } from "../../crossSite/connect";
 import type { Tool } from "../../services/catalogueApi";
 import { fetchInstallInfo } from "../../services/catalogueApi";
 
 // The modal resolves install coordinates on mount: the engine installs a
 // distribution from the index, never a catalogue entry, so the footer can only
 // offer an enable once the platform has said which distribution and which
-// version. Both calls the modal makes on mount are stubbed here.
+// version. The call the modal makes on mount is stubbed here.
 
 vi.mock("../../services/catalogueApi", () => ({
   fetchInstallInfo: vi.fn(),
@@ -80,7 +81,8 @@ describe("ToolDetailModal install action", () => {
     show();
 
     expect(await screen.findByText(/deepeval is not on the index/i)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /enable plugin/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /install into a project/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /install into a project/i })).toBeNull();
     // The unmodified Close button is still present (with the × button, also named Close).
     expect(screen.getAllByRole("button", { name: /close/i })).toHaveLength(2);
   });
@@ -91,7 +93,8 @@ describe("ToolDetailModal install action", () => {
     show();
 
     expect(await screen.findByText(/could not reach the catalogue/i)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /enable plugin/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /install into a project/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /install into a project/i })).toBeNull();
   });
 });
 
@@ -130,12 +133,33 @@ describe("ToolDetailModal control install", () => {
   // The platform installs only what the catalogue exports as a control: an entry with the "control" type
   // tag (backend controls_export.is_control). A framework, or any entry with questions, is shown like a
   // control but must not take the control install, which the platform would refuse.
-  it("is offered for an entry with the control tag", async () => {
+  const controlEntry = () =>
+    makeTool({ slug: "accuracy", tags: [{ id: 1, slug: "control", label: "Control", section: "type" }] as Tool["tags"],
+               questions: [{ id: 1, order: 1, text: "Q?" }] as Tool["questions"] });
+
+  it("takes the control path for an entry with the control tag: without a handshake, it says how to reach it", async () => {
+    sessionStorage.clear();
     mockInstallInfo.mockResolvedValue({ slug: "c", package_name: "", version: "", index_url: "", installable: false, reason: "a control" });
-    show(makeTool({ tags: [{ id: 1, slug: "control", label: "Control", section: "type" }] as Tool["tags"],
-                    questions: [{ id: 1, order: 1, text: "Q?" }] as Tool["questions"] }));
-    // without a platform handshake the control path says how to reach it
+    show(controlEntry());
     expect(await screen.findByText(/install this control/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /install into a project/i })).toBeNull();
+  });
+
+  it("is offered for an entry with the control tag once the platform's handshake says where its controls app is", async () => {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ url: "http://localhost/webapp", expires: Date.now() + 60_000, controls: "http://localhost/controls" })
+    );
+    try {
+      show(controlEntry());
+      expect(await screen.findByRole("link", { name: /install into a project/i })).toHaveAttribute(
+        "href",
+        "http://localhost/controls/install?slug=accuracy"
+      );
+      expect(screen.queryByText(/install this control/)).toBeNull();
+    } finally {
+      sessionStorage.clear();
+    }
   });
 
   it("is not offered for a framework with questions", async () => {

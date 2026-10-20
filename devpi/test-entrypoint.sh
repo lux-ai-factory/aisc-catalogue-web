@@ -1,7 +1,8 @@
 #!/bin/sh
 # Builds this image and checks what entrypoint.sh promises, in throwaway containers (own names, own
 # volume, no published port) that it removes afterwards:
-# - root/public exists after the first start and after a restart on the same data;
+# - root/public exists after the first start and after a restart on the same data, and the index
+#   DEVPI_INDEX names (root/dev) when it names one;
 # - with DEVPI_ROOT_PASSWORD, root opens with it and no longer with the empty password, also after a
 #   restart; a restart with a different one stops with a message;
 # - without it, it does not start: root would be open to anyone who reaches the port (a message says so,
@@ -41,10 +42,13 @@ docker build -q -t "$TAG" "$(dirname "$0")" >/dev/null
 docker network create "$NET" >/dev/null
 
 # Every process's command line on this host, read until the file $WORK/stop exists; a hit on the
-# password (grep reads it from a file, so it is in no command line of ours) leaves $WORK/argv-hit.
+# password (grep reads it from a file, so it is in no command line of ours) leaves $WORK/argv-hit, and
+# one on devpi-server (read from a file the same way) leaves $WORK/argv-seen: the sampler saw the server.
 sample_argv() {
   while [ ! -e "$WORK/stop" ]; do
-    cat /proc/[0-9]*/cmdline 2>/dev/null | tr '\0' '\n' | grep -q -F -f "$WORK/password" && : > "$WORK/argv-hit"
+    argv=$(cat /proc/[0-9]*/cmdline 2>/dev/null | tr '\0' '\n')
+    printf '%s\n' "$argv" | grep -q -F -f "$WORK/password" && : > "$WORK/argv-hit"
+    printf '%s\n' "$argv" | grep -q -F -f "$WORK/server" && : > "$WORK/argv-seen"
   done
 }
 
@@ -63,20 +67,29 @@ start() {
   done
 }
 login() { docker exec "$NAME" sh -c "devpi use http://127.0.0.1:3141 >/dev/null && devpi login root --password '$1' >/dev/null 2>&1"; }
-has_index() { docker exec "$NAME" curl -sf -o /dev/null http://127.0.0.1:3141/root/public/+simple/; }
+# has_index [<index>]: root/public unless named
+has_index() { docker exec "$NAME" curl -sf -o /dev/null "http://127.0.0.1:3141/${1:-root/public}/+simple/"; }
 
 # the first start, watched: the command lines of this host, and another container trying root's
 # empty password as fast as it can
 PW="pw-$$-never-on-a-command-line"
 printf '%s\n' "$PW" > "$WORK/password"
-rm -f "$WORK/stop" "$WORK/argv-hit"
+printf '%s\n' devpi-server > "$WORK/server"
+rm -f "$WORK/stop" "$WORK/argv-hit" "$WORK/argv-seen"
 sample_argv & SAMPLER=$!
 docker run -d --name "$PROBE" --network "$NET" --entrypoint sh "$TAG" -c \
   "while :; do curl -s -o /dev/null -w '%{http_code}\n' -H 'Content-Type: application/json' \
      -d '{\"user\": \"root\", \"password\": \"\"}' http://$NAME:3141/+login; sleep 0.05; done" >/dev/null
 start "$PW" || fail "did not start with a password"
 : > "$WORK/stop"; wait "$SAMPLER" 2>/dev/null || true; SAMPLER=
+[ -e "$WORK/argv-seen" ] || fail "sampler saw nothing: no devpi-server among this host's command lines"
 [ -e "$WORK/argv-hit" ] && fail "the password was on a command line"
+# the probe must have reached the server: once it serves, the empty password gets a 401
+i=0
+until docker logs "$PROBE" 2>/dev/null | grep -q '^401$'; do
+  i=$((i + 1)); [ "$i" -gt 20 ] && fail "the empty-password probe never reached the server"
+  sleep 0.5
+done
 docker logs "$PROBE" 2>/dev/null | grep -q '^200$' && fail "root answered the empty password from another container during the first start"
 docker rm -f "$PROBE" >/dev/null
 docker logs "$NAME" 2>&1 | grep -q -F -f "$WORK/password" && fail "the password is in the logs"
@@ -136,8 +149,16 @@ while [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = true ]; do
 done
 docker logs "$NAME" 2>&1 | grep -q "devpi-server exited" || fail "no message when devpi-server exits at once"
 
-start "" "root/Not An Index" && fail "said ready although the index could not be created"
+# with a password, on a new volume: the start can only stop at the index
+docker rm -f "$NAME" >/dev/null 2>&1 || true
+docker volume rm "$VOL" >/dev/null
+start "s3cret" "root/Not An Index" && fail "said ready although the index could not be created"
 docker logs "$NAME" 2>&1 | grep -q "devpi ready" && fail "said ready although the index could not be created"
+docker logs "$NAME" 2>&1 | grep -q "could not create the index" || fail "no message for an index that could not be created"
+
+# another of root's indexes, named by DEVPI_INDEX
+start "s3cret" "root/dev" || fail "did not start with DEVPI_INDEX=root/dev"
+has_index "root/dev" || fail "root/dev missing with DEVPI_INDEX=root/dev"
 
 start "" "team/dev" && fail "said ready for an index of another user than root"
 docker logs "$NAME" 2>&1 | grep -q "must be root/" || fail "no message for an index of another user than root"

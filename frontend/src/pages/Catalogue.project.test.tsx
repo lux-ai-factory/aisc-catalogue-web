@@ -23,6 +23,13 @@ vi.mock("../services/catalogueApi", () => ({
   fetchInstallInfo: vi.fn(),
 }));
 
+// The detail pop-up as a button that reports an install of its entry, as an install dialog does.
+vi.mock("../components/catalogue/ToolDetailModal", () => ({
+  default: ({ tool, onInstalled }: { tool: Tool; onInstalled?: (slug: string) => void }) => (
+    <button onClick={() => onInstalled?.(tool.slug)}>{`install ${tool.name}`}</button>
+  ),
+}));
+
 vi.mock("../services/projectCatalogue", () => ({
   projectSlug: vi.fn(),
   fetchProjectCatalogue: vi.fn(),
@@ -225,6 +232,37 @@ describe("Catalogue page of a project", () => {
     fireEvent.click(screen.getByRole("button", { name: /tests/i }));
     expect(await screen.findByText("Harness")).toBeInTheDocument();
     expect(screen.queryByText("Fair")).toBeNull();
+  });
+
+  it("says the project's catalogue failed to load on another error, and loads nothing", async () => {
+    vi.mocked(fetchProjectCatalogue).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 502, data: { detail: "bad gateway" } },
+    });
+    renderPage();
+    expect(
+      await screen.findByText("Failed to load the project's catalogue. Please try again.")
+    ).toBeInTheDocument();
+    expect(fetchToolsDetailed).not.toHaveBeenCalled();
+  });
+
+  it("shows the plain message when the update's detail is not text", async () => {
+    vi.mocked(updateFromPublic).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 422, data: { detail: [{ loc: ["body"], msg: "bad" }] } },
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Update from public" }));
+    expect(await screen.findByText("The update failed. Please try again.")).toBeInTheDocument();
+  });
+
+  it("marks the card installed once its entry is installed, without loading the catalogue again", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Fair" }));
+    expect(screen.queryByText("Installed")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "install Fair" }));
+    expect(await screen.findByText("Installed")).toBeInTheDocument();
+    expect(fetchToolsDetailed).toHaveBeenCalledTimes(1);
   });
 
   it("serves the footer images under the build's base path", async () => {
