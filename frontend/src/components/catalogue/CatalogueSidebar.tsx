@@ -283,12 +283,17 @@ const styles = {
     transform: "translateY(-50%)",
     pointerEvents: "none" as const,
   },
-  // ── "Plugin available" toggle (below the search bar) ──
+  // ── "Plugin available" toggle (below the search bar): a button, so the keyboard reaches it ──
   pluginToggleRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "8px",
+    width: "100%",
+    padding: 0,
+    border: "none",
+    background: "none",
+    fontFamily: "inherit",
     marginBottom: "8px",
     fontSize: "13px",
     fontWeight: 600 as const,
@@ -322,8 +327,9 @@ const styles = {
     borderRadius: "8px",
     cursor: "pointer",
     fontSize: "13px",
-    color: "#000FDF80",
-    backgroundColor: active ? "#C5D2FF" : "#C5D2FF",
+    // selected: the tabs' blue, white text; not selected: blue on light blue
+    color: active ? "#fff" : "#000FDF",
+    backgroundColor: active ? "#000FDF" : "#C5D2FF",
     border: "None",
     textAlign: "left" as const,
     fontWeight: active ? 600 : 400,
@@ -360,6 +366,7 @@ const styles = {
     backgroundColor: active ? "#C5D2FF" : "#F6F8FF",
     color: active ? "#3b5bdb" : "#495057",
     fontWeight: active ? 600 : 400,
+    fontFamily: "inherit",
     transition: "all 0.15s ease",
   }),
     aiSystemUnderAssesment: (active: boolean) => ({
@@ -369,11 +376,13 @@ const styles = {
     borderRadius: "8px",
     cursor: "pointer",
     fontSize: "13px",
-    color: "#000FDF80",
-    backgroundColor: active ? "#C5D2FF" : "#C5D2FF",
+    // selected: the tabs' blue, white text; not selected: blue on light blue
+    color: active ? "#fff" : "#000FDF",
+    backgroundColor: active ? "#000FDF" : "#C5D2FF",
     border: "None",
     textAlign: "left" as const,
     fontWeight: active ? 600 : 400,
+    fontFamily: "inherit",
     transition: "all 0.15s ease",
     lineHeight: "1.4",
   }),
@@ -385,9 +394,10 @@ const styles = {
         cursor: "pointer",
         fontSize: "12px",
         border: "None",
-        backgroundColor: active ? "#C5D2FF" : "#C5D2FF",
-        color: "#000FDF80",
+        backgroundColor: active ? "#000FDF" : "#C5D2FF",
+        color: active ? "#fff" : "#000FDF",
         fontWeight: active ? 600 : 400,
+        fontFamily: "inherit",
         transition: "all 0.15s ease",
     }),
   seeMore: {
@@ -550,6 +560,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
         <button
           style={styles.tab(filters.tab === "controls")}
           onClick={() => setTab("controls")}
+          aria-pressed={filters.tab === "controls"}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
           Controls
@@ -557,6 +568,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
         <button
           style={styles.tab(filters.tab === "tests")}
           onClick={() => setTab("tests")}
+          aria-pressed={filters.tab === "tests"}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3" /><path d="M9 3v4h6V3" /><path d="M9 14l2 2 4-4" /></svg>
           Tests
@@ -567,7 +579,8 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
       <div style={styles.searchContainer}>
         <input
           type="text"
-          placeholder="Search by name"
+          placeholder="Search by name or description"
+          aria-label="Search the catalogue"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           style={styles.searchInput}
@@ -579,14 +592,14 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
           dimensions. */}
       {projectFilter && (
         <>
-          <div
+          <button
+            type="button"
             style={{
               ...styles.pluginToggleRow,
               ...(projectFilter.unavailable ? { cursor: "default", opacity: 0.5 } : {}),
             }}
-            onClick={() => {
-              if (!projectFilter.unavailable) projectFilter.onChange(!projectFilter.on);
-            }}
+            onClick={() => projectFilter.onChange(!projectFilter.on)}
+            disabled={projectFilter.unavailable}
             role="switch"
             aria-checked={projectFilter.on && !projectFilter.unavailable}
             aria-disabled={projectFilter.unavailable || undefined}
@@ -596,7 +609,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
             <span style={styles.toggleTrack(projectFilter.on && !projectFilter.unavailable)}>
               <span style={styles.toggleKnob(projectFilter.on && !projectFilter.unavailable)} />
             </span>
-          </div>
+          </button>
           {projectFilter.unavailable && (
             <div style={styles.projectNote}>
               The project&apos;s dimensions could not be loaded: showing everything.
@@ -613,7 +626,8 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
       {/* "Plugin available" toggle (below the search bar), tests only, since
           only tests have a runnable plugin. */}
       {filters.tab === "tests" && (
-        <div
+        <button
+          type="button"
           style={styles.pluginToggleRow}
           onClick={() => onPluginOnlyChange(!pluginOnly)}
           role="switch"
@@ -623,7 +637,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
           <span style={styles.toggleTrack(pluginOnly)}>
             <span style={styles.toggleKnob(pluginOnly)} />
           </span>
-        </div>
+        </button>
       )}
 
       {/* ── Trustworthiness Dimensions ── */}
@@ -638,6 +652,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
             <React.Fragment key={dim.slug}>
               <button
                 style={styles.trustworthinessdimensionItem(isActive)}
+                aria-pressed={isActive}
                 onClick={() => {
                   toggleDimension(dim.slug);
                   if (dim.children) toggleExpandDimension(dim.slug);
@@ -656,6 +671,7 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
                       <button
                         key={child.slug}
                         style={styles.childItem(childActive)}
+                        aria-pressed={childActive}
                         onClick={() => toggleDimension(child.slug)}
                       >
                         {child.label}
@@ -675,13 +691,15 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
           <div style={styles.sectionTitle}>Source</div>
           <div>
             {sourceOptions.map((s) => (
-              <span
+              <button
+                type="button"
                 key={s}
                 style={styles.sectorPills(filters.selectedSources.includes(s))}
+                aria-pressed={filters.selectedSources.includes(s)}
                 onClick={() => toggleSource(s)}
               >
                 {s}
-              </span>
+              </button>
             ))}
           </div>
         </>
@@ -718,13 +736,15 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
       <div style={styles.sectionTitle}>AI system under assessment</div>
       <div>
         {visibleAiSystems.map((s) => (
-          <span
+          <button
+            type="button"
             key={s}
             style={styles.aiSystemUnderAssesment(filters.selectedAiSystems.includes(s))}
+            aria-pressed={filters.selectedAiSystems.includes(s)}
             onClick={() => toggleAiSystem(s)}
           >
             {s}
-          </span>
+          </button>
         ))}
       </div>
       {AI_SYSTEM_OPTIONS.length > 6 && (
@@ -740,13 +760,15 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
       <div style={styles.sectionTitle}>License</div>
       <div>
         {LICENSE_OPTIONS.map((l) => (
-          <span
+          <button
+            type="button"
             key={l}
             style={styles.licence(filters.selectedLicenses.includes(l))}
+            aria-pressed={filters.selectedLicenses.includes(l)}
             onClick={() => toggleLicense(l)}
           >
             {l}
-          </span>
+          </button>
         ))}
       </div>
         </>

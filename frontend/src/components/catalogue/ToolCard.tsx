@@ -7,7 +7,6 @@ import { providerName } from "./entry";
 const themes = {
   tests: {
     coloredBg: "#0A2EA41A",
-    iconInfoBg: "#A7B8F4",
     iconStroke: "#3b5bdb",
     tagBg: "#C5D2FF4D",
     tagColor: "#000FDF80",
@@ -17,7 +16,6 @@ const themes = {
   // Pink/purple: used for controls and for Tests that are not fully ready.
   controls: {
     coloredBg: "#8D00DF1A",
-    iconInfoBg: "#8D00DF4D",
     iconStroke: "#8D00DF",
     tagBg: "#D5A1F44D",
     tagColor: "#8D00DF80",
@@ -55,6 +53,16 @@ const baseStyles = {
     fontWeight: 700 as const,
     color: "#1a1a2e",
     margin: 0,
+  },
+  // the title opens the entry: a button, so the keyboard reaches the card
+  titleButton: {
+    padding: 0,
+    border: "none",
+    background: "none",
+    font: "inherit",
+    color: "inherit",
+    textAlign: "left" as const,
+    cursor: "pointer",
   },
   iconsRow: {
     display: "flex",
@@ -192,7 +200,18 @@ const ToolCard: React.FC<ToolCardProps> = ({
         }}
       >
         <div style={baseStyles.topRow}>
-          <h3 style={baseStyles.title}>{tool.name}</h3>
+          <h3 style={baseStyles.title}>
+            <button
+              type="button"
+              style={baseStyles.titleButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick(tool);
+              }}
+            >
+              {tool.name}
+            </button>
+          </h3>
           {tool.aisc_local && (
             <span style={baseStyles.projectBadge}>Local</span>
           )}
@@ -201,24 +220,6 @@ const ToolCard: React.FC<ToolCardProps> = ({
           )}
           <div style={baseStyles.iconsRow}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={t.iconStroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3" /><path d="M9 3v4h6V3" /><path d="M9 14l2 2 4-4" /></svg>
-            <div
-              style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "50%",
-                backgroundColor: t.iconInfoBg,
-                border: "none",
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "14px",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              i
-            </div>
           </div>
         </div>
 
@@ -319,6 +320,7 @@ const ToolCard: React.FC<ToolCardProps> = ({
             onClick(tool);
           }}
           title="View details"
+          aria-label={`View details of ${tool.name}`}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="5" y1="12" x2="19" y2="12" />

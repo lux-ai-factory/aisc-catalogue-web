@@ -227,6 +227,15 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
     }
   }, [tool.id, tool.tags]);
 
+  // Escape closes, unless a dialog opened from this one (an install) has taken it
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const meta = tool.metadata;
 
   const dimensionTags = toolTags.filter((t) => t.section === "dimension");
@@ -289,13 +298,19 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
 
   return (
     <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tool-detail-title"
+        style={styles.modal}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close button */}
-        <button style={styles.closeButton} onClick={onClose}>
+        <button style={styles.closeButton} onClick={onClose} aria-label="Close">
           &times;
         </button>
 
-        <h2 style={styles.title}>{tool.name}</h2>
+        <h2 id="tool-detail-title" style={styles.title}>{tool.name}</h2>
 
         <div
           style={{

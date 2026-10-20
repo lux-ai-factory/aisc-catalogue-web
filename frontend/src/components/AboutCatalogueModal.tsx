@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useFocusOnOpen } from "../hooks/useFocusOnOpen";
 
 const REMI_URL =
   "https://cnpd.public.lu/en/professionnels/outils-conformite/remi.html";
@@ -32,6 +33,7 @@ const s = {
     fontFamily: "Arial, sans-serif",
     marginBottom: "40px",
     boxSizing: "border-box" as const,
+    outline: "none",
   },
   closeButton: {
     position: "absolute" as const,
@@ -80,6 +82,7 @@ interface AboutCatalogueModalProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const AboutCatalogueModal: React.FC<AboutCatalogueModalProps> = ({ onClose }) => {
+  const dialogRef = useFocusOnOpen<HTMLDivElement>(true);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -91,6 +94,8 @@ const AboutCatalogueModal: React.FC<AboutCatalogueModalProps> = ({ onClose }) =>
   return (
     <div style={s.overlay} onClick={onClose}>
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="about-catalogue-title"

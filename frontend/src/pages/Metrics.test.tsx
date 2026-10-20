@@ -79,6 +79,19 @@ describe("Metrics page", () => {
     expect(fetchMetrics).toHaveBeenCalledTimes(1);
   });
 
+  it("lets the table scroll sideways on a narrow screen", async () => {
+    renderPage();
+    await screen.findByText("toxicity_rate");
+    expect(screen.getByRole("table").parentElement).toHaveStyle({ overflowX: "auto" });
+  });
+
+  it("labels its search box and its dimension filter", async () => {
+    renderPage();
+    await screen.findByText("toxicity_rate");
+    expect(screen.getByRole("textbox", { name: "Search metrics by name" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Trustworthiness dimension" })).toBeInTheDocument();
+  });
+
   it("says so when the metrics cannot be loaded", async () => {
     vi.mocked(fetchMetrics).mockRejectedValue(new Error("network"));
     vi.spyOn(console, "error").mockImplementation(() => {});

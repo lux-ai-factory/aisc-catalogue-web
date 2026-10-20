@@ -1,4 +1,5 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import ToolCard from "./ToolCard";
 import type { Tool } from "../../services/catalogueApi";
 
@@ -87,5 +88,27 @@ describe("ToolCard provider chip", () => {
       <ToolCard tool={makeTool({ metadata: { provider: "Provider" } as any })} variant="tests" onClick={() => {}} />
     );
     expect(queryByText(/^Provider: /)).toBeNull();
+  });
+});
+
+describe("ToolCard from the keyboard", () => {
+  it("opens the entry from its title, a button the keyboard reaches", () => {
+    const onClick = vi.fn();
+    const tool = makeTool({ name: "MLA-BiTe" });
+    render(<ToolCard tool={tool} variant="tests" onClick={onClick} />);
+    const title = screen.getByRole("button", { name: "MLA-BiTe" });
+    userEvent.tab();
+    expect(title).toHaveFocus();
+    userEvent.keyboard("{Enter}");
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onClick).toHaveBeenCalledWith(tool);
+  });
+
+  it("names its arrow button, and has no 'i' that does nothing", () => {
+    const onClick = vi.fn();
+    render(<ToolCard tool={makeTool({ name: "MLA-BiTe" })} variant="tests" onClick={onClick} />);
+    screen.getByRole("button", { name: "View details of MLA-BiTe" }).click();
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("i")).toBeNull();
   });
 });

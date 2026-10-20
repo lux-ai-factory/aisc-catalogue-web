@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import ToolDetailModal from "./ToolDetailModal";
 import { CrossSiteProvider } from "../../crossSite/CrossSiteContext";
 import type { Tool } from "../../services/catalogueApi";
@@ -87,8 +87,8 @@ describe("ToolDetailModal install action", () => {
 
     expect(await screen.findByText(/deepeval is not on the index/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /enable plugin/i })).toBeNull();
-    // The unmodified Close button is still present.
-    expect(screen.getByRole("button", { name: /close/i })).toBeInTheDocument();
+    // The unmodified Close button is still present (with the × button, also named Close).
+    expect(screen.getAllByRole("button", { name: /close/i })).toHaveLength(2);
   });
 
   it("says so when the install service cannot be reached", async () => {
@@ -186,5 +186,42 @@ describe("ToolDetailModal missing values", () => {
   it("shows a real provider", async () => {
     show(makeTool({ metadata: { provider: "IBM Research" } as Tool["metadata"] }));
     expect(await screen.findByText("IBM Research")).toBeInTheDocument();
+  });
+});
+
+describe("ToolDetailModal is a dialog", () => {
+  beforeEach(() => {
+    vi.mocked(fetchToolTags).mockResolvedValue([]);
+    mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, index_url: "", installable: false, reason: "not on the index" });
+  });
+
+  const showWith = (onClose: () => void) =>
+    render(
+      <CrossSiteProvider>
+        <ToolDetailModal tool={makeTool()} onClose={onClose} />
+      </CrossSiteProvider>
+    );
+
+  it("is a modal dialog named by the entry", async () => {
+    showWith(() => {});
+    const dialog = await screen.findByRole("dialog", { name: "Example" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+  });
+
+  it("names its × button Close, as the footer's", async () => {
+    const onClose = vi.fn();
+    showWith(onClose);
+    const closers = await screen.findAllByRole("button", { name: "Close" });
+    expect(closers).toHaveLength(2);
+    fireEvent.click(closers[0]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes on Escape", async () => {
+    const onClose = vi.fn();
+    showWith(onClose);
+    await screen.findByRole("dialog", { name: "Example" });
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

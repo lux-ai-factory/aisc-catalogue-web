@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { installTest } from "../services/catalogueApi";
 import { projectSlug } from "../services/projectCatalogue";
 import type { InstallCoordinates } from "./coordinates";
-import { Actions, s } from "./ControlInstall";
+import { Actions, closeOnEscape, s } from "./ControlInstall";
+import { useFocusOnOpen } from "../hooks/useFocusOnOpen";
 
 /**
  * "Install into this project…" for a test, without leaving the project's catalogue, as a control is
@@ -24,6 +25,7 @@ export default function TestInstall({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const dialogRef = useFocusOnOpen<HTMLDivElement>(open);
 
   const close = () => setOpen(false);
 
@@ -59,11 +61,14 @@ export default function TestInstall({
       {open && (
         <div style={s.overlay} onClick={close}>
           <div
+            ref={dialogRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="test-install-title"
             style={s.dialog}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => closeOnEscape(e, close)}
           >
             <div id="test-install-title" style={s.eyebrow}>Install a test</div>
             <div style={s.control}>

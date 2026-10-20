@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { isPlatformAddress, type HandshakePayload } from "./connect";
 import { controlsBase, controlsInstallUrl, projectParam } from "./controlsInstall";
+import { useFocusOnOpen } from "../hooks/useFocusOnOpen";
 
 /** What the platform's controls app offers for one control. */
 type Options = {
@@ -63,6 +64,7 @@ export default function ControlInstall({
   const fallback = trusted ? controlsInstallUrl(handshake, slug) : null;
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>({ phase: "loading" });
+  const dialogRef = useFocusOnOpen<HTMLDivElement>(open);
 
   if (!base || !fallback) {
     return (
@@ -89,11 +91,14 @@ export default function ControlInstall({
       {open && (
         <div style={s.overlay} onClick={close}>
           <div
+            ref={dialogRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="control-install-title"
             style={s.dialog}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => closeOnEscape(e, close)}
           >
             <div id="control-install-title" style={s.eyebrow}>Install a control</div>
             {state.phase === "loading" && <p style={s.muted}>Asking your platform…</p>}
@@ -246,6 +251,14 @@ function Ready({
   );
 }
 
+/** Escape closes an install dialog, and only it: the detail pop-up behind
+ *  leaves an Escape whose default was prevented alone. */
+export function closeOnEscape(e: React.KeyboardEvent, close: () => void) {
+  if (e.key !== "Escape") return;
+  e.preventDefault();
+  close();
+}
+
 export function Actions({
   onCancel,
   cancelLabel = "Cancel",
@@ -276,6 +289,7 @@ export const s = {
     padding: "16px",
   },
   dialog: {
+    outline: "none",
     backgroundColor: "#fff",
     borderRadius: "12px",
     width: "100%",

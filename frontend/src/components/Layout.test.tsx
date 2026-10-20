@@ -35,3 +35,14 @@ describe("Layout About the catalogue", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("Layout About the catalogue, from the keyboard", () => {
+  it("takes the focus when it opens, and Escape closes it", () => {
+    renderLayout();
+    fireEvent.click(screen.getByRole("button", { name: "About the catalogue" }));
+    const dialog = screen.getByRole("dialog", { name: "About the catalogue" });
+    expect(dialog).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});

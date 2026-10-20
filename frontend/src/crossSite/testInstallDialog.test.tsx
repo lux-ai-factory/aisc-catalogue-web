@@ -3,7 +3,7 @@
 // into the catalogue's project. Opened without a project, a test still goes to the engine, which is on
 // another site.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import ToolDetailModal from "../components/catalogue/ToolDetailModal";
 import { CrossSiteProvider } from "./CrossSiteContext";
 import type { Tool } from "../services/catalogueApi";
@@ -37,10 +37,10 @@ beforeEach(() => {
   vi.mocked(projectSlug).mockReturnValue("mcas");
 });
 
-async function openDialog(onInstalled?: (slug: string) => void) {
+async function openDialog(onInstalled?: (slug: string) => void, onClose: () => void = () => {}) {
   render(
     <CrossSiteProvider>
-      <ToolDetailModal tool={test()} onClose={() => {}} onInstalled={onInstalled} />
+      <ToolDetailModal tool={test()} onClose={onClose} onInstalled={onInstalled} />
     </CrossSiteProvider>,
   );
   fireEvent.click(await screen.findByRole("button", { name: /install into this project/i }));
@@ -84,6 +84,16 @@ describe("installing a test stays in the project's catalogue", () => {
     const dialog = await openDialog();
     fireEvent.click(within(dialog).getByRole("button", { name: /^install$/i }));
     expect(await within(dialog).findByText("The platform did not install it.")).toBeTruthy();
+  });
+
+  it("takes the focus when it opens, and Escape closes it but not the test's page", async () => {
+    const onClose = vi.fn();
+    const dialog = await openDialog(undefined, onClose);
+    expect(dialog).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /install a test/i })).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "LangBiTe" })).toBeInTheDocument();
   });
 
   it("without a project, a test still goes to the engine", async () => {

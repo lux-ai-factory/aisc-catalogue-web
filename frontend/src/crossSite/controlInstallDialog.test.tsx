@@ -55,10 +55,10 @@ beforeEach(() => {
   (globalThis as any).fetch = fetchMock;
 });
 
-async function openDialog(onInstalled?: (slug: string) => void) {
+async function openDialog(onInstalled?: (slug: string) => void, onClose: () => void = () => {}) {
   render(
     <CrossSiteProvider>
-      <ToolDetailModal tool={control()} onClose={() => {}} onInstalled={onInstalled} />
+      <ToolDetailModal tool={control()} onClose={onClose} onInstalled={onInstalled} />
     </CrossSiteProvider>,
   );
   fireEvent.click(await screen.findByRole("link", { name: LABEL }));
@@ -200,6 +200,16 @@ describe("installing a control stays in the catalogue", () => {
     fireEvent.click(await within(dialog).findByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: /install a control/i })).toBeNull());
     expect(screen.getByRole("link", { name: LABEL })).toBeInTheDocument();
+  });
+
+  it("takes the focus when it opens, and Escape closes it but not the control's page", async () => {
+    const onClose = vi.fn();
+    const dialog = await openDialog(undefined, onClose);
+    expect(dialog).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /install a control/i })).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Accuracy checklist" })).toBeInTheDocument();
   });
 
   it("does not ask install-info for a control: its install never uses it", async () => {

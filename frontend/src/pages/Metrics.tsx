@@ -155,11 +155,12 @@ const s = {
     fontWeight: 600 as const,
   },
   // ── Table ──
+  // scrolls sideways when the columns do not fit (a phone)
   tableWrap: {
     backgroundColor: "#fff",
     borderRadius: "12px",
     border: "1px solid #e5e7eb",
-    overflow: "hidden",
+    overflowX: "auto" as const,
     boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
   },
   table: {
@@ -361,6 +362,7 @@ const Metrics: React.FC = () => {
               <input
                 type="text"
                 placeholder="Type metric name"
+                aria-label="Search metrics by name"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={s.searchInput}
@@ -387,6 +389,7 @@ const Metrics: React.FC = () => {
               </svg>
             </div>
             <select
+              aria-label="Trustworthiness dimension"
               style={s.dimensionSelect}
               value={selectedDimension}
               onChange={(e) => setSelectedDimension(e.target.value)}
