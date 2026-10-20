@@ -2,8 +2,10 @@
 # Start devpi-server and make sure the index the tests are published to exists.
 #
 # The image is built with `devpi-init --no-root-pypi`, so the server comes up
-# with a root user and nothing else. This creates the publish index once,
-# idempotently, then hands over to the server in the foreground.
+# with a root user and nothing else; a data directory that has not been
+# initialised (an empty bind mount) is initialised the same way here. This
+# creates the publish index once, idempotently, then hands over to the server
+# in the foreground.
 #
 # Root's password: the image's is empty. The one handed in (DEVPI_ROOT_PASSWORD, required) is set the
 # first time (a restart already has it): whoever can log in as root can publish a package the engine
@@ -26,12 +28,30 @@ case "$INDEX_SPEC" in
 esac
 INDEX_NAME=${INDEX_SPEC#*/}
 
+# This shell is PID 1, which the kernel gives no default signal handling: without the trap,
+# docker stop's SIGTERM is dropped and the server is SIGKILLed after the grace period. It is set
+# before anything starts and signals whichever server runs now; a stop during the setup ends the
+# start instead of serving.
+SERVER_PID=
+STOPPING=
+trap 'STOPPING=1; [ -z "$SERVER_PID" ] || kill -TERM "$SERVER_PID" 2>/dev/null' TERM INT
+
+# devpi-init writes .serverversion: without it the directory holds no server data
+if [ ! -e "$DEVPISERVER_SERVERDIR/.serverversion" ]; then
+  devpi-init --serverdir "$DEVPISERVER_SERVERDIR" --no-root-pypi
+fi
+
 serve() {
+  [ -z "$STOPPING" ] || exit 143
   devpi-server --serverdir "$DEVPISERVER_SERVERDIR" --host "$1" --port "$PORT" --restrict-modify root &
   SERVER_PID=$!
   i=0
   until curl -sf -o /dev/null "http://127.0.0.1:${PORT}/+api"; do
-    kill -0 "$SERVER_PID" 2>/dev/null || { echo "devpi-server exited before it was ready" >&2; exit 1; }
+    if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+      [ -z "$STOPPING" ] || exit 143
+      echo "devpi-server exited before it was ready" >&2
+      exit 1
+    fi
     i=$((i + 1))
     [ "$i" -gt 60 ] && { echo "devpi did not come up in 60s" >&2; exit 1; }
     sleep 1
@@ -108,9 +128,6 @@ kill "$SERVER_PID"
 wait "$SERVER_PID" || true
 
 # 2. serve
-# This shell is PID 1, which the kernel gives no default signal handling: without the trap,
-# docker stop's SIGTERM is dropped and the server is SIGKILLed after the grace period.
-trap 'kill -TERM "$SERVER_PID" 2>/dev/null' TERM INT
 serve "$HOST"
 echo "devpi ready: ${INDEX_SPEC} at http://127.0.0.1:${PORT}/${INDEX_SPEC}/+simple/"
 set +e

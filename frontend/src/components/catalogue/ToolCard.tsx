@@ -1,5 +1,6 @@
 import React from "react";
 import type { Tool } from "../../services/catalogueApi";
+import { providerName } from "./entry";
 
 // ─── Theme per variant ───────────────────────────────────────────────────────
 
@@ -165,10 +166,8 @@ const ToolCard: React.FC<ToolCardProps> = ({
   // Nature indicators, deliberately different per type so a control card does
   // not mirror a test card.
   const controlTopic = tool.metadata?.control_topic ?? null;
-  // Tests show their provider (from metadata) the way controls show Source;
-  // "Provider" is the seed's placeholder for "unknown".
-  const rawProvider = tool.metadata?.provider?.trim() ?? "";
-  const provider = rawProvider && rawProvider !== "Provider" ? rawProvider : null;
+  // Tests show their provider (from metadata) the way controls show Source.
+  const provider = providerName(tool.metadata);
   const questionCount = tool.questions?.length ?? 0;
   const metricCount = tool.metrics?.length ?? 0;
 

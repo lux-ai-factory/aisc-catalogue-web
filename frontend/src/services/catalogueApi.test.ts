@@ -40,6 +40,11 @@ describe("catalogue API base", () => {
     expect(mockedAxios.get.mock.calls[0][0]).toBe(url("/api/projects/acme/catalogue/api"));
   });
 
+  it.each(calls)("%s asks nothing without a project", async (_n, call) => {
+    await expect(call()).rejects.toThrow("No project");
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+  });
+
   it("computes the base on each call, not once at import", async () => {
     openAt("?project=first");
     await fetchTags();

@@ -16,13 +16,17 @@ type State =
   | { phase: "error"; error: string }
   | { phase: "ready"; options: Options };
 
+/** The answer's `error` when it is text, else `fallback`: anything else would crash the page. */
+const errorText = (body: { error?: unknown } | null, fallback: string): string =>
+  typeof body?.error === "string" && body.error ? body.error : fallback;
+
 /** Ask the platform what it would install and where. */
 function fetchOffer(base: string, slug: string, handshake: HandshakePayload | null): Promise<State> {
   return fetch(`${base}/api/install?slug=${encodeURIComponent(slug)}${projectParam(handshake)}`, { credentials: "include" })
     .then(async (res): Promise<State> => {
       const body = await res.json().catch(() => null);
       if (res.ok && body && Array.isArray(body.projects)) return { phase: "ready", options: body as Options };
-      return { phase: "error", error: body?.error ?? "The platform could not offer this control." };
+      return { phase: "error", error: errorText(body, "The platform could not offer this control.") };
     })
     // A redirect to the sign-in page, or a platform on another site: the
     // browser shows neither to this page, only that the call failed.
@@ -165,7 +169,7 @@ function Ready({
           setPending(false);
           onInstalled(project);
         } else {
-          setError(body?.error ?? "The platform did not install it.");
+          setError(errorText(body, "The platform did not install it."));
           setPending(false);
         }
       })

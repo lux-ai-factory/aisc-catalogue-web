@@ -32,11 +32,7 @@ The Dockerfile builds the app and serves the `build` folder on port 3000:
 docker build --build-arg CATALOGUE_BASE=/project-catalogue/ .
 ```
 
-Build args:
-
-- `CATALOGUE_BASE`: the path the build is served under (`/` by default).
-- `VITE_API_URL`: the origin used for reads when no project is known (blank by
-  default, which means `/api` on the page's own origin).
+Build arg: `CATALOGUE_BASE`, the path the build is served under (`/` by default).
 
 `VITE_BACK_ORIGINS` (comma-separated, `http://localhost,http://localhost:8100`
 by default) lists the other origins the platform runs on, e.g. for a dev server

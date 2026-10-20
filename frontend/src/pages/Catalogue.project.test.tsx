@@ -201,6 +201,19 @@ describe("Catalogue page of a project", () => {
     ).toBeInTheDocument();
   });
 
+  it("says so, and does not claim to filter, when the project's dimensions cannot be loaded", async () => {
+    vi.mocked(fetchProjectDimensions).mockRejectedValue(new Error("network"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    renderPage();
+    expect(await screen.findByText("Private")).toBeInTheDocument();
+    expect(
+      screen.getByText("The project's dimensions could not be loaded: showing everything.")
+    ).toBeInTheDocument();
+    const sw = screen.getByRole("switch", { name: /for this project/i });
+    expect(sw).toHaveAttribute("aria-checked", "false");
+    expect(sw).toHaveAttribute("aria-disabled", "true");
+  });
+
   it("serves the footer images under the build's base path", async () => {
     vi.stubEnv("BASE_URL", "/private-catalogue/");
     try {

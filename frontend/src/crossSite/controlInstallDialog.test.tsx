@@ -157,6 +157,21 @@ describe("installing a control stays in the catalogue", () => {
     expect(await within(dialog).findByText("You can read this project but not change it.")).toBeInTheDocument();
   });
 
+  it("shows the plain message when a refusal's error is not text, not a crash", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      init?.method === "POST" ? json({ error: { code: "forbidden" } }, 403) : json(OPTIONS),
+    );
+    const dialog = await openDialog();
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Install" }));
+    expect(await within(dialog).findByText("The platform did not install it.")).toBeInTheDocument();
+  });
+
+  it("shows the plain message when the offer's error is not text", async () => {
+    fetchMock.mockImplementation(() => json({ error: ["no", "such", "control"] }, 404));
+    const dialog = await openDialog();
+    expect(await within(dialog).findByText("The platform could not offer this control.")).toBeInTheDocument();
+  });
+
   it("passes on the controls app's reason when it cannot offer the control", async () => {
     fetchMock.mockImplementation(() => json({ error: "The catalogue has no control called “accuracy-checklist”." }, 404));
     const dialog = await openDialog();

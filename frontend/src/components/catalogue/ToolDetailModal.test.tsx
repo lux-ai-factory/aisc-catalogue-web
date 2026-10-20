@@ -157,3 +157,34 @@ describe("ToolDetailModal control install", () => {
     expect(screen.queryByText(/install this control/)).toBeNull();
   });
 });
+
+describe("ToolDetailModal missing values", () => {
+  beforeEach(() => {
+    // a test entry: an earlier test may have left the tag lookup answering a control's tags
+    vi.mocked(fetchToolTags).mockResolvedValue([]);
+    mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, index_url: "", installable: false, reason: "not on the index" });
+  });
+
+  it("shows '-' for a missing provider, branch, version and maturity, not the old form's placeholders", async () => {
+    show(makeTool({ version: "", metadata: { provider: "", branch: "", project_maturity: "" } as Tool["metadata"] }));
+    await screen.findByText("not on the index");
+    expect(screen.queryByText("Provider name")).toBeNull();
+    expect(screen.queryByText("XXXXXXXXXX")).toBeNull();
+    for (const label of ["Provider", "Branch", "Version", "Project Maturity"]) {
+      expect(screen.getByText(label).nextElementSibling).toHaveTextContent(/^-$/);
+    }
+  });
+
+  it("hides the seed's 'Provider' placeholder, as the card does", async () => {
+    show(makeTool({ metadata: { provider: "Provider" } as Tool["metadata"] }));
+    await screen.findByText("not on the index");
+    // the section's label only, not a value
+    expect(screen.getAllByText("Provider")).toHaveLength(1);
+    expect(screen.getByText("Provider").nextElementSibling).toHaveTextContent(/^-$/);
+  });
+
+  it("shows a real provider", async () => {
+    show(makeTool({ metadata: { provider: "IBM Research" } as Tool["metadata"] }));
+    expect(await screen.findByText("IBM Research")).toBeInTheDocument();
+  });
+});

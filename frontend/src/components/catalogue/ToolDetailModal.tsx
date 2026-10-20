@@ -9,6 +9,7 @@ import { useCrossSite } from "../../crossSite/CrossSiteContext";
 import ControlInstall from "../../crossSite/ControlInstall";
 import TestInstall from "../../crossSite/TestInstall";
 import { projectSlug } from "../../services/projectCatalogue";
+import { providerName } from "./entry";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
@@ -246,8 +247,9 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
   // The AISC platform answers install-info for a test; a control's install goes to the controls app
   // and never uses it.
   const install = useInstallInfo(!isInstallableControl ? tool.slug : null);
+  const provider = providerName(meta);
   const sourceLabel =
-    sourceTags.map((t) => t.label).join(", ") || meta?.provider || "";
+    sourceTags.map((t) => t.label).join(", ") || provider || "";
 
   const questionList = (
     <ol style={{ margin: "0 0 4px", paddingLeft: "20px" }}>
@@ -364,9 +366,7 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
               <>
                 <div style={styles.sectionLabel}>Provider</div>
                 <div style={styles.sectionValue}>
-                  {meta?.provider || (
-                    <span style={styles.placeholder}>Provider name</span>
-                  )}
+                  {provider || <span style={styles.placeholder}>-</span>}
                 </div>
 
                 <div style={styles.sectionLabel}>Project</div>
@@ -445,21 +445,21 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
                 <div style={styles.sectionLabel}>Branch</div>
                 <div style={styles.sectionValue}>
                   {meta?.branch || (
-                    <span style={styles.placeholder}>XXXXXXXXXX</span>
+                    <span style={styles.placeholder}>-</span>
                   )}
                 </div>
 
                 <div style={styles.sectionLabel}>Version</div>
                 <div style={styles.sectionValue}>
                   {tool.version || (
-                    <span style={styles.placeholder}>XXXXXXXXXX</span>
+                    <span style={styles.placeholder}>-</span>
                   )}
                 </div>
 
                 <div style={styles.sectionLabel}>Project Maturity</div>
                 <div style={styles.sectionValue}>
                   {meta?.project_maturity || (
-                    <span style={styles.placeholder}>XXXXXXXXXX</span>
+                    <span style={styles.placeholder}>-</span>
                   )}
                 </div>
 

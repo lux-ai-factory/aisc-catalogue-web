@@ -1,17 +1,15 @@
 import axios from "axios";
 import { projectSlug, catalogueBase } from "./projectCatalogue";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
-
 axios.defaults.withCredentials = true;
-const API = `${API_BASE}/api`;
 
 /** Where the catalogue reads go: the project's catalogue on the AISC platform,
  *  read on each call because the project comes from the page URL. Without a
- *  project they fall back to /api on VITE_API_URL (blank: this origin). */
+ *  project there is nothing to read, and the call fails without a request. */
 function apiBase(): string {
   const slug = projectSlug();
-  return slug ? catalogueBase(slug) : API;
+  if (!slug) throw new Error("No project");
+  return catalogueBase(slug);
 }
 
 
@@ -156,13 +154,10 @@ export async function fetchMetrics(): Promise<Metric[]> {
   return res.data;
 }
 
-/** Fetch tags associated with a specific tool. The platform answers the list
- *  itself; the catalogue backend's /api answers { tool_id, tags_count, tags }. */
+/** Fetch tags associated with a specific tool. */
 export async function fetchToolTags(toolId: number): Promise<Tag[]> {
-  const res = await axios.get<{ tool_id: number; tags_count: number; tags: Tag[] } | Tag[]>(
-    `${apiBase()}/tool/${toolId}/tags/`
-  );
-  return Array.isArray(res.data) ? res.data : res.data.tags;
+  const res = await axios.get<Tag[]>(`${apiBase()}/tool/${toolId}/tags/`);
+  return res.data;
 }
 
 // ─── Install (AISC platform) ─────────────────────────────────────────────────

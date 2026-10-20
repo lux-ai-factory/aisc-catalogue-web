@@ -3,6 +3,7 @@ import Layout from "../components/Layout";
 import NavPill from "../components/NavPill";
 import ToolDetailModal from "../components/catalogue/ToolDetailModal";
 import type { Tool, Tag, Metric } from "../services/catalogueApi";
+import { useProjectCatalogue } from "../hooks/useProjectCatalogue";
 import {
   fetchToolsDetailed,
   fetchTags,
@@ -281,9 +282,13 @@ const Metrics: React.FC = () => {
   const [selectedDimension, setSelectedDimension] = useState<string>("");
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  // Nothing loads until the platform confirms the project chose its catalogue.
+  const { info: projectInfo, stopped } = useProjectCatalogue();
+  const ready = projectInfo !== null;
 
-  // ── Fetch data on mount ──
+  // ── Fetch data once the project's catalogue is known ──
   useEffect(() => {
+    if (!ready) return;
     const load = async () => {
       try {
         setLoading(true);
@@ -304,7 +309,7 @@ const Metrics: React.FC = () => {
       }
     };
     load();
-  }, []);
+  }, [ready]);
 
   // ── Lookups ──
   const toolBySlug = useMemo(() => {
@@ -412,7 +417,9 @@ const Metrics: React.FC = () => {
           </div>
         </div>
 
-        {loading ? (
+        {stopped ? (
+          <div style={s.loadingContainer}>{stopped}</div>
+        ) : loading ? (
           <div style={s.loadingContainer}>Loading metrics…</div>
         ) : error ? (
           <div style={s.loadingContainer}>{error}</div>

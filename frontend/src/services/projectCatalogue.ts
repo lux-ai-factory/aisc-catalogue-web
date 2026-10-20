@@ -38,7 +38,7 @@ if (typeof window !== "undefined") projectSlug();
 /** The platform's endpoints for the project's catalogue. */
 export const projectBase = (slug: string) => `/api/projects/${slug}/catalogue`;
 
-/** Where the copy answers the catalogue's own API (replaces VITE_API_URL). */
+/** Where the copy answers the catalogue's own API. */
 export const catalogueBase = (slug: string) => `${projectBase(slug)}/api`;
 
 export interface ProjectCatalogueInfo {

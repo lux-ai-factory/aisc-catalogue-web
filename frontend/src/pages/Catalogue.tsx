@@ -9,12 +9,11 @@ import type { Tool, Tag } from "../services/catalogueApi";
 import { fetchToolsDetailed, fetchTags } from "../services/catalogueApi";
 import { useIsMobile } from "../hooks/useIsMobile";
 import {
-  projectSlug,
   fetchProjectCatalogue,
   updateFromPublic,
   fetchProjectDimensions,
-  type ProjectCatalogueInfo,
 } from "../services/projectCatalogue";
+import { useProjectCatalogue } from "../hooks/useProjectCatalogue";
 
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -124,8 +123,6 @@ const platformAnswer = (err: unknown) =>
   (err as { response?: { status?: number; data?: { detail?: unknown } } })
     ?.response;
 
-const NOT_CHOSEN = "This project has not chosen its catalogue yet: open it from the project page.";
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const Catalogue: React.FC = () => {
@@ -141,8 +138,9 @@ const Catalogue: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   // The project's copy, its dimensions, and the "For this project" filter (on
   // by default).
-  const [projectInfo, setProjectInfo] = useState<ProjectCatalogueInfo | null>(null);
+  const { info: projectInfo, setInfo: setProjectInfo, stopped } = useProjectCatalogue();
   const [projectDimensions, setProjectDimensions] = useState<string[] | null>(null);
+  const [dimensionsFailed, setDimensionsFailed] = useState(false);
   const [forProject, setForProject] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -176,31 +174,19 @@ const Catalogue: React.FC = () => {
     }
   };
 
-  // The catalogue loads once the platform confirms the project chose one: its private copy, or the public catalogue read live through the
-  // platform. Otherwise the page says why and loads nothing.
-  const loadProjectCatalogue = async () => {
-    const stop = (message: string) => {
-      setError(message);
-      setLoading(false);
-    };
-    if (!projectSlug())
-      return stop("Open this catalogue from a project in the AISC launcher.");
-    try {
-      const info = await fetchProjectCatalogue();
-      if (info.mode !== "private" && info.mode !== "public") return stop(NOT_CHOSEN);
-      setProjectInfo(info);
-    } catch (err) {
-      return stop(
-        platformAnswer(err)?.status === 409
-          ? NOT_CHOSEN
-          : "Failed to load the project's catalogue. Please try again."
-      );
-    }
+  // The catalogue loads once the platform confirms the project chose one
+  // (useProjectCatalogue); otherwise the page says why and loads nothing.
+  const ready = projectInfo !== null;
+  useEffect(() => {
+    if (!ready) return;
     fetchProjectDimensions()
       .then(setProjectDimensions)
-      .catch((err) => console.error("Failed to load the project's dimensions:", err));
+      .catch((err) => {
+        console.error("Failed to load the project's dimensions:", err);
+        setDimensionsFailed(true);
+      });
     loadData();
-  };
+  }, [ready]);
 
   // An admin refreshes a private copy from the public catalogue.
   const handleUpdateFromPublic = async () => {
@@ -223,10 +209,6 @@ const Catalogue: React.FC = () => {
       setUpdating(false);
     }
   };
-
-  useEffect(() => {
-    loadProjectCatalogue();
-  }, []);
 
   // ── Filter tools based on sidebar + search ──
   const filteredTools = useMemo(() => {
@@ -386,6 +368,7 @@ const Catalogue: React.FC = () => {
                   on: forProject,
                   onChange: setForProject,
                   noDimensions: projectDimensions?.length === 0,
+                  unavailable: dimensionsFailed,
                 }
               : undefined
           }
@@ -456,7 +439,9 @@ const Catalogue: React.FC = () => {
           )}
 
           {/* Content */}
-          {loading ? (
+          {stopped ? (
+            <div style={s.loadingContainer}>{stopped}</div>
+          ) : loading ? (
             <div style={s.loadingContainer}>Loading catalogue...</div>
           ) : error ? (
             <div style={s.loadingContainer}>{error}</div>

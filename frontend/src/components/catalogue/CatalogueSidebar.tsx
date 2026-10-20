@@ -434,8 +434,14 @@ interface CatalogueSidebarProps {
   pluginOnly: boolean;
   onPluginOnlyChange: (v: boolean) => void;
   /** Project catalogue only: keep the entries that match the project's
-   *  dimensions. `noDimensions` when the project has none selected yet. */
-  projectFilter?: { on: boolean; onChange: (v: boolean) => void; noDimensions: boolean };
+   *  dimensions. `noDimensions` when the project has none selected yet,
+   *  `unavailable` when they could not be loaded (nothing is filtered then). */
+  projectFilter?: {
+    on: boolean;
+    onChange: (v: boolean) => void;
+    noDimensions: boolean;
+    unavailable?: boolean;
+  };
 }
 
 
@@ -574,17 +580,28 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
       {projectFilter && (
         <>
           <div
-            style={styles.pluginToggleRow}
-            onClick={() => projectFilter.onChange(!projectFilter.on)}
+            style={{
+              ...styles.pluginToggleRow,
+              ...(projectFilter.unavailable ? { cursor: "default", opacity: 0.5 } : {}),
+            }}
+            onClick={() => {
+              if (!projectFilter.unavailable) projectFilter.onChange(!projectFilter.on);
+            }}
             role="switch"
-            aria-checked={projectFilter.on}
+            aria-checked={projectFilter.on && !projectFilter.unavailable}
+            aria-disabled={projectFilter.unavailable || undefined}
             aria-label="For this project"
           >
             <span>For this project</span>
-            <span style={styles.toggleTrack(projectFilter.on)}>
-              <span style={styles.toggleKnob(projectFilter.on)} />
+            <span style={styles.toggleTrack(projectFilter.on && !projectFilter.unavailable)}>
+              <span style={styles.toggleKnob(projectFilter.on && !projectFilter.unavailable)} />
             </span>
           </div>
+          {projectFilter.unavailable && (
+            <div style={styles.projectNote}>
+              The project&apos;s dimensions could not be loaded: showing everything.
+            </div>
+          )}
           {projectFilter.noDimensions && (
             <div style={styles.projectNote}>
               No control objectives selected yet: showing everything.

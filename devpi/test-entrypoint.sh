@@ -10,8 +10,10 @@
 #   root does not answer to the empty password from another container while the first start sets it;
 # - an index that cannot be created stops the start: no "devpi ready"; so does an index of another
 #   user than root (DEVPI_INDEX=team/dev), which would be created as root/dev;
-# - docker stop reaches devpi-server (SIGTERM, not a SIGKILL after the grace period), and a server that
-#   exits at once stops the start at once, not after the 60 s readiness wait.
+# - docker stop reaches devpi-server (SIGTERM, not a SIGKILL after the grace period), also while the start
+#   is still setting up, and a server that exits at once stops the start at once, not after the 60 s
+#   readiness wait;
+# - an empty bind-mounted data directory is initialised on the first start.
 # Usage: sh devpi/test-entrypoint.sh
 set -eu
 
@@ -25,6 +27,9 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 cleanup() {
   [ -n "${SAMPLER:-}" ] && kill "$SAMPLER" 2>/dev/null || true
   docker rm -f "$NAME" "$PROBE" >/dev/null 2>&1 || true
+  # the server's files in the bind-mounted directory are root's: removed from a container
+  [ -d "$WORK/bind" ] && docker run --rm -v "$WORK/bind:/d" --entrypoint sh "$TAG" -c 'rm -rf /d/* /d/.[!.]*' >/dev/null 2>&1
+  true
   docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
   docker image rm "$TAG" >/dev/null 2>&1 || true
@@ -43,12 +48,12 @@ sample_argv() {
   done
 }
 
-# start <password> [<index>]: a container on $VOL, waited on until it says it is ready (or stops);
-# the password reaches docker through the environment, not its command line
+# start <password> [<index>]: a container on $VOL (or on $DATA when set), waited on until it says it is
+# ready (or stops); the password reaches docker through the environment, not its command line
 start() {
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   DEVPI_ROOT_PASSWORD="$1" DEVPI_INDEX="${2:-root/public}" \
-    docker run -d --name "$NAME" --network "$NET" -v "$VOL:/data" -e DEVPI_ROOT_PASSWORD -e DEVPI_INDEX "$TAG" >/dev/null
+    docker run -d --name "$NAME" --network "$NET" -v "${DATA:-$VOL}:/data" -e DEVPI_ROOT_PASSWORD -e DEVPI_INDEX "$TAG" >/dev/null
   i=0
   until docker logs "$NAME" 2>&1 | grep -q "devpi ready"; do
     i=$((i + 1))
@@ -103,9 +108,27 @@ took=$(( $(date +%s) - t0 ))
 [ "$took" -lt 5 ] || fail "docker stop took ${took}s: SIGTERM did not reach devpi-server"
 [ "$(docker inspect -f '{{.State.ExitCode}}' "$NAME")" != 137 ] || fail "docker stop ended in SIGKILL (137)"
 
+# a stop while the setup server is still coming up
+docker rm -f "$NAME" >/dev/null 2>&1 || true
+DEVPI_ROOT_PASSWORD=s3cret docker run -d --name "$NAME" -v "$VOL:/data" -e DEVPI_ROOT_PASSWORD "$TAG" >/dev/null
+sleep 1
+t0=$(date +%s)
+docker stop -t 30 "$NAME" >/dev/null
+took=$(( $(date +%s) - t0 ))
+[ "$took" -lt 5 ] || fail "docker stop during the setup took ${took}s: SIGTERM was not handled"
+[ "$(docker inspect -f '{{.State.ExitCode}}' "$NAME")" != 137 ] || fail "docker stop during the setup ended in SIGKILL (137)"
+docker logs "$NAME" 2>&1 | grep -q "devpi ready" && fail "a stop during the setup went on to serve"
+
+# an empty directory from the host holds none of the data the image was built with
+mkdir "$WORK/bind"
+DATA="$WORK/bind"
+start "s3cret" || fail "did not start on an empty bind-mounted directory"
+has_index || fail "root/public missing on a bind-mounted directory"
+DATA=
+
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 t0=$(date +%s)
-docker run -d --name "$NAME" -v "$VOL:/data" -e DEVPISERVER_SERVERDIR=/no-such-dir "$TAG" >/dev/null
+DEVPI_ROOT_PASSWORD=s3cret docker run -d --name "$NAME" -v "$VOL:/data" -e DEVPI_ROOT_PASSWORD -e DEVPI_PORT=not-a-port "$TAG" >/dev/null
 while [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = true ]; do
   [ $(( $(date +%s) - t0 )) -gt 20 ] && fail "a server that cannot start kept the start waiting"
   sleep 1
