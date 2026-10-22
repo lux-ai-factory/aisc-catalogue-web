@@ -59,6 +59,10 @@ function cleanOrigin(value: unknown): string | null {
   }
 }
 
+/** How long the app waits for /origins.json before it renders without it. The launcher's site
+ *  answers it from its own configuration, at once; a longer wait is something stuck in between. */
+export const ORIGINS_TIMEOUT_MS = 2000;
+
 /**
  * Also trust the engine this install runs on now, as the launcher's site answers it at
  * /origins.json. The catalogue is served on that site (under /project-catalogue/), so the answer
@@ -66,14 +70,32 @@ function cleanOrigin(value: unknown): string | null {
  * non-JSON answer adds nothing, and the build's list is all there is. Never rejects.
  */
 export async function loadInstallOrigins(): Promise<void> {
+  // The page renders only once this settles, so a stalled request (a proxy, a captive network, a
+  // hung upstream) must not hold it: after ORIGINS_TIMEOUT_MS the request is called off and the
+  // build's list is all there is. The timer settles it even if the request ignores the abort.
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve();
+    }, ORIGINS_TIMEOUT_MS);
+  });
+  const read = (async () => {
+    try {
+      const response = await fetch("/origins.json", { credentials: "same-origin", signal: controller.signal });
+      if (!response.ok) return;
+      const answer = (await response.json()) as { engine?: unknown } | null;
+      const engine = cleanOrigin(answer?.engine);
+      if (engine && !controller.signal.aborted) installOrigins.add(engine);
+    } catch {
+      /* no origins.json here: nothing more is trusted */
+    }
+  })();
   try {
-    const response = await fetch("/origins.json", { credentials: "same-origin" });
-    if (!response.ok) return;
-    const answer = (await response.json()) as { engine?: unknown } | null;
-    const engine = cleanOrigin(answer?.engine);
-    if (engine) installOrigins.add(engine);
-  } catch {
-    /* no origins.json here: nothing more is trusted */
+    await Promise.race([read, timeout]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

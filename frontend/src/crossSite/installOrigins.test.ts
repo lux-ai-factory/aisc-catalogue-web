@@ -79,6 +79,46 @@ describe("the install's engine address, from /origins.json", () => {
     expect(c.isPlatformAddress(`${window.location.origin}/p`)).toBe(true);
   });
 
+  it("gives up on an answer that never comes, so the page still renders", async () => {
+    vi.useFakeTimers();
+    try {
+      let signal: AbortSignal | undefined;
+      // never answers, and does not even listen to the signal
+      vi.stubGlobal("fetch", vi.fn((_url: string, init?: RequestInit) => {
+        signal = init?.signal ?? undefined;
+        return new Promise(() => {});
+      }));
+      const c = await freshConnect();
+      let settled = false;
+      const loading = c.loadInstallOrigins().then(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(c.ORIGINS_TIMEOUT_MS - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await loading;
+      expect(settled).toBe(true);
+      // the request itself is called off too
+      expect(signal?.aborted).toBe(true);
+      expect(c.isPlatformAddress("http://localhost:8080/controls")).toBe(false);
+      expect(c.isPlatformAddress("http://localhost/p")).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("gives up on a body that never ends", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: () => new Promise(() => {}) })));
+      const c = await freshConnect();
+      const loading = c.loadInstallOrigins();
+      await vi.advanceTimersByTimeAsync(c.ORIGINS_TIMEOUT_MS);
+      await expect(loading).resolves.toBeUndefined();
+      expect(c.isPlatformAddress("http://localhost:8080/controls")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps the defaults and the page's own origin once the engine is known", async () => {
     answer({ engine: "http://localhost:8080" });
     const c = await freshConnect();

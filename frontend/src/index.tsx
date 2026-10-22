@@ -11,7 +11,8 @@ const root = ReactDOM.createRoot(
 );
 // The launcher's handshake may come from an engine that moved off its port, which only the
 // install's /origins.json knows: read it first, then the handshake, then render (the "/" redirect
-// drops the fragment as soon as the app mounts). On a site without it, this is one failed request.
+// drops the fragment as soon as the app mounts). On a site without it, this is one failed request;
+// a request that hangs is given up after ORIGINS_TIMEOUT_MS.
 loadInstallOrigins().then(() => {
   startCrossSiteSession();
   root.render(
