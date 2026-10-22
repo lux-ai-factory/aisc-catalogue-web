@@ -27,8 +27,10 @@ What it does:
 - Takes the `#env=` handshake the launcher adds to the link: it gives the Back
   link, the controls app and the project. It is kept per tab, lasts an hour at
   most, and its Back link and controls app are used only when they are on the
-  platform's origins: the page's own, and those in `VITE_BACK_ORIGINS`. Once its
-  hour has run out, the page says "Open the catalogue again from the project page."
+  platform's origins: the page's own, those in `VITE_BACK_ORIGINS`, and the
+  install's engine as the launcher's site answers it at `/origins.json` (read once
+  when the app starts, so an engine that moved off its port needs no rebuild). Once
+  its hour has run out, the page says "Open the catalogue again from the project page."
 
 There are no accounts and no pages to add or edit entries: any other path leads
 to the catalogue.
@@ -49,7 +51,9 @@ build for `/project-catalogue/` opened directly on port 3000 shows a blank page.
 
 `VITE_BACK_ORIGINS` (comma-separated, `http://localhost,http://localhost:8100`
 by default) lists the other origins the platform runs on, e.g. for a dev server
-on another port. It is read at build time; the Dockerfile has no argument for it.
+on another port. It is read at build time; the Dockerfile has no argument for it. The install's engine
+needs no entry here: the app reads it from `/origins.json` on its own site, and where there is no such
+file (the hosted public catalogue) it trusts this list alone.
 
 ## Development
 

@@ -15,9 +15,10 @@
  * The fragment is anyone's to write, so: the handshake is kept per tab
  * (sessionStorage), so two tabs opened from two projects keep their own; it may
  * claim to last an hour at most; and its webapp, Back link and controls app are
- * taken only on the platform's own origins: the page's own (the launcher's) and
+ * taken only on the platform's own origins: the page's own (the launcher's),
  * VITE_BACK_ORIGINS (comma-separated; the stack's http://localhost and
- * http://localhost:8100 by default).
+ * http://localhost:8100 by default) and the install's engine as the launcher's
+ * site names it at /origins.json (loadInstallOrigins).
  */
 export const STORAGE_KEY = "aisc_target_env";
 /** What the page says where the handshake's Back link or control install would
@@ -37,6 +38,44 @@ const BACK_ORIGINS: readonly string[] = (
   .split(",")
   .map((o) => o.trim().replace(/\/+$/, ""))
   .filter(Boolean);
+
+/** The install's own addresses, read from the launcher's /origins.json when the app starts. The
+ *  build's list cannot follow an engine that moved off its port; the launcher's site always knows
+ *  where it is now. */
+const installOrigins = new Set<string>();
+
+/** The origin of an http(s) address as origins.json gives it, or null. The launcher's pages take
+ *  these values only when they look like a plain address (homepage/assets/origins.js); the same rule
+ *  here, with no user part either, so that what is trusted is exactly the host it shows. */
+function cleanOrigin(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const v = value.replace(/\/+$/, "");
+  if (!/^https?:\/\/[^\/?#\s"'<>]+(\/[^?#\s"'<>]*)?$/.test(v)) return null;
+  try {
+    const url = new URL(v);
+    return url.username || url.password ? null : url.origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Also trust the engine this install runs on now, as the launcher's site answers it at
+ * /origins.json. The catalogue is served on that site (under /project-catalogue/), so the answer
+ * comes from the page's own origin. The hosted public catalogue has no such file: a failed or
+ * non-JSON answer adds nothing, and the build's list is all there is. Never rejects.
+ */
+export async function loadInstallOrigins(): Promise<void> {
+  try {
+    const response = await fetch("/origins.json", { credentials: "same-origin" });
+    if (!response.ok) return;
+    const answer = (await response.json()) as { engine?: unknown } | null;
+    const engine = cleanOrigin(answer?.engine);
+    if (engine) installOrigins.add(engine);
+  } catch {
+    /* no origins.json here: nothing more is trusted */
+  }
+}
 
 export interface HandshakePayload {
   /** The platform's webapp: required and checked, not used. */
@@ -156,7 +195,9 @@ export function startCrossSiteSession(): HandshakePayload | null {
 // Capture any incoming `#env=` handshake at module load. App.tsx redirects
 // "/" -> "/catalogue" with <Navigate replace>, which drops the URL fragment
 // before React Router finishes mounting; reading here (before render) ensures
-// the handshake is kept regardless of that redirect.
+// the handshake is kept regardless of that redirect. A handshake from an engine
+// that moved off its port is not on the platform yet: its fragment is left in
+// place, and the app reads it again once loadInstallOrigins has answered.
 if (typeof window !== "undefined") {
   try {
     startCrossSiteSession();
@@ -174,10 +215,11 @@ export function getBackUrl(): string | null {
 }
 
 /** Whether an http(s) address is on the platform the catalogue belongs to: the page's own
- *  origin (AISC serves the catalogue on the launcher's) or one of BACK_ORIGINS. The handshake is
- *  anyone's to write, so its Back link and its controls app must pass this. */
+ *  origin (AISC serves the catalogue on the launcher's), one of BACK_ORIGINS, or the install's
+ *  engine (loadInstallOrigins). The handshake is anyone's to write, so its Back link and its
+ *  controls app must pass this. */
 export function isPlatformAddress(url: string): boolean {
   if (!isHttpUrl(url)) return false;
   const { origin } = new URL(url);
-  return origin === window.location.origin || BACK_ORIGINS.includes(origin);
+  return origin === window.location.origin || BACK_ORIGINS.includes(origin) || installOrigins.has(origin);
 }
