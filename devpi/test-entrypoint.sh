@@ -4,7 +4,10 @@
 # - root/public exists after the first start and after a restart on the same data, and the index
 #   DEVPI_INDEX names (root/dev) when it names one;
 # - with DEVPI_ROOT_PASSWORD, root opens with it and no longer with the empty password, also after a
-#   restart; a restart with a different one stops with a message;
+#   restart;
+# - a restart with a different one resets root's password to it in place (devpi-passwd, the password on
+#   its stdin), keeps the volume's packages and says so in one line; a second start repairs nothing; a
+#   reset that fails stops with today's message;
 # - without it, it does not start: root would be open to anyone who reaches the port (a message says so,
 #   on a new volume and on one whose root has a password);
 # - the password is never on a command line (any user of the Docker host can read those with ps), and
@@ -131,9 +134,83 @@ has_index || fail "root/public missing on a volume whose files were root's"
 login "s3cret" || fail "root does not open with DEVPI_ROOT_PASSWORD on a volume whose files were root's"
 not_root
 
-start "other" && fail "restarted with another password"
-docker logs "$NAME" 2>&1 | grep -q "is not DEVPI_ROOT_PASSWORD" || fail "no message for another password"
-docker logs "$NAME" 2>&1 | grep -q -e "env.secrets" -e "plugin-publisher" && fail "the message names files and services of another repo"
+REPAIRED="devpi: root's password in this volume was not this install's; reset it to DEVPI_ROOT_PASSWORD (packages kept)"
+# upload_tiny <password>: a small sdist, tiny-0.1, uploaded to root/public as root
+upload_tiny() {
+  docker exec "$NAME" sh -c "cd /tmp && mkdir -p tiny-0.1 && printf 'Metadata-Version: 1.0\nName: tiny\nVersion: 0.1\n' > tiny-0.1/PKG-INFO \
+    && tar czf tiny-0.1.tar.gz tiny-0.1 && devpi use http://127.0.0.1:3141/root/public >/dev/null \
+    && devpi login root --password '$1' >/dev/null && devpi upload tiny-0.1.tar.gz >/dev/null"
+}
+lists_tiny() { docker exec "$NAME" curl -sf "http://127.0.0.1:3141/root/public/+simple/tiny/" | grep -q "tiny-0.1.tar.gz"; }
+# leaks <password>: it is in the logs, or in what docker inspect shows of the container other than the
+# environment it was handed (where DEVPI_ROOT_PASSWORD is, by design)
+leaks() {
+  printf '%s\n' "$1" > "$WORK/leak"
+  docker logs "$NAME" 2>&1 | grep -q -F -f "$WORK/leak" && return 0
+  docker inspect "$NAME" | jq 'del(.[].Config.Env)' | grep -q -F -f "$WORK/leak"
+}
+
+# A volume made with password A, holding a package, started with B: root's password is reset to B
+# in place, and the package stays.
+a_volume_with_another_root_password_is_reset_and_keeps_its_packages() {
+  docker rm -f "$NAME" >/dev/null 2>&1 || true
+  docker volume rm "$VOL" >/dev/null 2>&1 || true
+  A="pw-a-$$-old"
+  B="pw-b-$$-new"
+  start "$A" || fail "did not start with password A"
+  upload_tiny "$A" || fail "could not upload a package under password A"
+  lists_tiny || fail "the package uploaded under A is not listed"
+  # the repair start, watched: neither password on any command line of this host
+  printf '%s\n%s\n' "$A" "$B" > "$WORK/password"
+  rm -f "$WORK/stop" "$WORK/argv-hit" "$WORK/argv-seen"
+  sample_argv & SAMPLER=$!
+  start "$B" || fail "did not serve on a volume whose root has another password"
+  : > "$WORK/stop"; wait "$SAMPLER" 2>/dev/null || true; SAMPLER=
+  [ -e "$WORK/argv-seen" ] || fail "sampler saw nothing during the repair start"
+  [ -e "$WORK/argv-hit" ] && fail "a password was on a command line during the repair"
+  [ "$(docker logs "$NAME" 2>&1 | grep -c -x -F "$REPAIRED")" = 1 ] || fail "not exactly one repair line"
+  docker logs "$NAME" 2>&1 | grep -q "is not DEVPI_ROOT_PASSWORD" && fail "the repair start still printed the old error"
+  leaks "$A" && fail "password A is in the logs or docker inspect"
+  leaks "$B" && fail "password B is in the logs or docker inspect (outside its environment)"
+  login "$B" || fail "root does not open with B after the reset"
+  login "$A" && fail "root still opens with A after the reset"
+  lists_tiny || fail "the package uploaded under A is gone after the reset"
+  not_root
+}
+
+a_second_start_repairs_nothing() {
+  start "$B" || fail "did not start again with B"
+  docker logs "$NAME" 2>&1 | grep -q "reset it to DEVPI_ROOT_PASSWORD" && fail "a second start repaired again"
+  login "$B" || fail "root does not open with B on the second start"
+  lists_tiny || fail "the package is gone on the second start"
+}
+
+# devpi-passwd replaced by one that fails: today's three lines, exit 1, nothing served
+a_reset_that_fails_keeps_todays_error() {
+  printf '#!/bin/sh\necho "stub devpi-passwd: failing on purpose" >&2\nexit 1\n' > "$WORK/devpi-passwd"
+  chmod 755 "$WORK/devpi-passwd"
+  LISTEN="-v $WORK/devpi-passwd:/usr/local/bin/devpi-passwd:ro"
+  start "other-$$" && fail "served although the reset failed"
+  LISTEN=
+  while [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = true ]; do sleep 1; done
+  [ "$(docker inspect -f '{{.State.ExitCode}}' "$NAME")" = 1 ] || fail "a failed reset did not exit 1"
+  logs=$(docker logs "$NAME" 2>&1)
+  printf '%s\n' "$logs" | grep -q "stub devpi-passwd" || fail "the stub devpi-passwd was not run"
+  printf '%s\n' "$logs" | grep -q -F "devpi: root's password in this data volume is not DEVPI_ROOT_PASSWORD (was the password changed?)." \
+    || fail "no first line of today's error"
+  printf '%s\n' "$logs" | grep -q -F "devpi: start it with the old DEVPI_ROOT_PASSWORD, or remove the devpi data volume (its packages" \
+    || fail "no second line of today's error"
+  printf '%s\n' "$logs" | grep -q -F "devpi: must then be published again) and start again." || fail "no third line of today's error"
+  printf '%s\n' "$logs" | grep -q "reset it to DEVPI_ROOT_PASSWORD" && fail "a failed reset printed the repair line"
+  printf '%s\n' "$logs" | grep -q -e "env.secrets" -e "plugin-publisher" && fail "the message names files and services of another repo"
+  # nothing was changed: B still opens root
+  start "$B" || fail "B no longer starts after a failed reset"
+  login "$B" || fail "root no longer opens with B after a failed reset"
+}
+
+a_volume_with_another_root_password_is_reset_and_keeps_its_packages
+a_second_start_repairs_nothing
+a_reset_that_fails_keeps_todays_error
 
 start "" && fail "started without a password on a volume whose root has one"
 docker logs "$NAME" 2>&1 | grep -q "has a password in this data volume" || fail "no message for an empty password on a volume with one"

@@ -21,6 +21,7 @@ describe("installCoordinates", () => {
       pkg: "aisc-plugin-langbite",
       version: "0.1.2",
       slug: "langbite",
+      fetchedOnInstall: false,
     });
   });
 
@@ -67,6 +68,41 @@ describe("installCoordinates", () => {
         index_url: "x",
         installable: true,
         reason: null,
+      })
+    ).toBeNull();
+  });
+
+  it("allows a test fetched on install even when its version is not known yet", () => {
+    expect(
+      installCoordinates({
+        slug: "langbite",
+        package_name: "aisc-plugin-langbite",
+        version: null,
+        index_url: "x",
+        installable: true,
+        reason: null,
+        fetched_on_install: true,
+        source: "lux-ai-factory/aisc-plugin-langbite",
+      })
+    ).toEqual({
+      pkg: "aisc-plugin-langbite",
+      version: null,
+      slug: "langbite",
+      fetchedOnInstall: true,
+    });
+  });
+
+  it("still refuses a fetched test that is not installable", () => {
+    expect(
+      installCoordinates({
+        slug: "langbite",
+        package_name: "aisc-plugin-langbite",
+        version: null,
+        index_url: "x",
+        installable: false,
+        reason: "GitHub could not be read",
+        fetched_on_install: true,
+        source: "lux-ai-factory/aisc-plugin-langbite",
       })
     ).toBeNull();
   });

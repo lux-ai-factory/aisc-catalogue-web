@@ -73,7 +73,14 @@ export default function TestInstall({
             <div id="test-install-title" style={s.eyebrow}>Install a test</div>
             <div style={s.control}>
               <div style={s.title}>{coordinates.pkg}</div>
-              <div style={s.muted}>{`Version ${coordinates.version}`}</div>
+              <div style={s.muted}>
+                {coordinates.version ? `Version ${coordinates.version}` : "Version decided on install"}
+              </div>
+              {coordinates.fetchedOnInstall && (
+                <div style={s.muted}>
+                  Downloaded from GitHub and built on install; this can take a minute.
+                </div>
+              )}
               <div style={s.muted}>{`Into the project ${projectSlug() ?? ""}`}</div>
             </div>
             {done ? (
@@ -87,7 +94,7 @@ export default function TestInstall({
                 {error && <p style={s.error}>{error}</p>}
                 <Actions onCancel={close}>
                   <button type="button" style={s.primary(pending)} disabled={pending} onClick={install}>
-                    {pending ? "Installing…" : "Install"}
+                    {pending ? (coordinates.fetchedOnInstall ? "Downloading and building…" : "Installing…") : "Install"}
                   </button>
                 </Actions>
               </>

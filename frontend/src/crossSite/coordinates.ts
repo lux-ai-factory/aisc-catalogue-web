@@ -11,7 +11,10 @@ import type { InstallInfo } from "../services/catalogueApi";
 
 export interface InstallCoordinates {
   pkg: string;
-  version: string;
+  /** null only for a test fetched on install whose version is decided when it is installed. */
+  version: string | null;
+  /** The platform downloads the plugin from GitHub and builds it on install. */
+  fetchedOnInstall: boolean;
   /** The catalogue entry, so an install can be traced back to what it is. */
   slug: string;
 }
@@ -20,6 +23,9 @@ export function installCoordinates(
   info: InstallInfo | null | undefined
 ): InstallCoordinates | null {
   if (!info || !info.installable) return null;
-  if (!info.package_name || !info.version) return null;
-  return { pkg: info.package_name, version: info.version, slug: info.slug };
+  if (!info.package_name) return null;
+  const fetchedOnInstall = info.fetched_on_install === true;
+  // without a version there is nothing to install, unless the platform fetches the plugin and picks the version itself
+  if (!info.version && !fetchedOnInstall) return null;
+  return { pkg: info.package_name, version: info.version, slug: info.slug, fetchedOnInstall };
 }

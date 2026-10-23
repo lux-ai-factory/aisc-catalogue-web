@@ -16,6 +16,10 @@
 # The server never runs as root. Started as root (the image's default), this script hands the data
 # directory to the devpi user, so a volume an older image filled as root keeps working, and runs itself
 # again as that user (setpriv, from util-linux). Started as another user, it goes on as that user.
+#
+# A volume whose root opens with another password (env.secrets made again over an old volume) is
+# repaired in place: the server is stopped, devpi-passwd sets root's password to DEVPI_ROOT_PASSWORD
+# directly in the database (the password on its stdin), and the setup runs again. The packages stay.
 set -eu
 
 if [ "$(id -u)" = 0 ]; then
@@ -68,12 +72,37 @@ serve() {
   done
 }
 
-# 1. setup, reachable from this container only
-serve 127.0.0.1
-python3 - "$PORT" "$INDEX_NAME" <<'PY'
+stop_server() {
+  kill "$SERVER_PID"
+  wait "$SERVER_PID" || true
+  SERVER_PID=
+}
+
+# Today's message when root opens with another password and it cannot be reset.
+another_password() {
+  echo "devpi: root's password in this data volume is not DEVPI_ROOT_PASSWORD (was the password changed?)." >&2
+  echo "devpi: start it with the old DEVPI_ROOT_PASSWORD, or remove the devpi data volume (its packages" >&2
+  echo "devpi: must then be published again) and start again." >&2
+  exit 1
+}
+
+# Sets root's password to DEVPI_ROOT_PASSWORD in the database, with the server stopped. devpi-passwd
+# asks for it twice through getpass: setsid takes away any terminal, so getpass reads the pipe (printf
+# is the shell's own, so the password is on no command line). Its output is shown only when it fails.
+reset_root_password() {
+  out=$(printf '%s\n%s\n' "$DEVPI_ROOT_PASSWORD" "$DEVPI_ROOT_PASSWORD" \
+    | setsid -w devpi-passwd root --serverdir "$DEVPISERVER_SERVERDIR" 2>&1) && return 0
+  printf '%s\n' "$out" >&2
+  return 1
+}
+
+# setup <after a reset: yes|no>: logs root in, sets its password on a new volume and creates the index,
+# on the server that runs now. Exits 3, saying nothing, when root opens with another password.
+setup() {
+python3 - "$PORT" "$INDEX_NAME" "$1" <<'PY'
 import base64, json, os, sys, urllib.error, urllib.parse, urllib.request
 
-port, index = sys.argv[1], urllib.parse.quote(sys.argv[2], safe="")
+port, index, after_reset = sys.argv[1], urllib.parse.quote(sys.argv[2], safe=""), sys.argv[3] == "yes"
 base = f"http://127.0.0.1:{port}"
 password = os.environ.get("DEVPI_ROOT_PASSWORD", "")
 
@@ -109,11 +138,9 @@ auth = login(password) if password else None
 if auth is None:
     empty = login("")
     if empty is None:
-        # the volume keeps another password for root, and only that one opens it
+        # the volume keeps another password for root, and only that one opens it: the shell resets it
         if password:
-            stop("root's password in this data volume is not DEVPI_ROOT_PASSWORD (was the password changed?).",
-                 "start it with the old DEVPI_ROOT_PASSWORD, or remove the devpi data volume (its packages",
-                 "must then be published again) and start again.")
+            sys.exit(3)
         stop("root has a password in this data volume, and DEVPI_ROOT_PASSWORD is empty:",
              "start it with that password, or remove the devpi data volume and start again.")
     if password:
@@ -127,6 +154,8 @@ if auth is None:
     else:
         stop(f"DEVPI_ROOT_PASSWORD is empty: root would be open to anything that reaches port {port}, which could",
              "then publish packages the engine installs and runs. Start it with a password.")
+elif after_reset:
+    print("devpi: root's password in this volume was not this install's; reset it to DEVPI_ROOT_PASSWORD (packages kept)")
 
 # already there on a restart, which is not an error; anything else is
 if call("GET", f"/root/{index}")[0] != 200:
@@ -134,8 +163,23 @@ if call("GET", f"/root/{index}")[0] != 200:
     if status not in (200, 201):
         stop(f"could not create the index root/{index} ({status})")
 PY
-kill "$SERVER_PID"
-wait "$SERVER_PID" || true
+}
+
+# 1. setup, reachable from this container only
+serve 127.0.0.1
+status=0
+setup no || status=$?
+if [ "$status" = 3 ]; then
+  stop_server
+  [ -z "$STOPPING" ] || exit 143
+  reset_root_password || another_password
+  serve 127.0.0.1
+  status=0
+  setup yes || status=$?
+  [ "$status" != 3 ] || another_password
+fi
+[ "$status" = 0 ] || exit "$status"
+stop_server
 
 # 2. serve
 serve "$HOST"

@@ -28,6 +28,9 @@ tests install from, taken from the catalogue and made into what a local AISC nee
 - The test install dialog names the project it installs into.
 - devpi does not start without a root password (root would be open to anything that reaches the port), and its
   server never runs as root: a volume an older image filled as root is handed to the `devpi` user on start.
+- A devpi volume whose root opens with another password (secrets made again over an old volume) no longer stops
+  the start: root's password is reset in place to `DEVPI_ROOT_PASSWORD` with `devpi-passwd`, the packages stay,
+  and one line says so. If the reset fails, the start stops with the message it gave before.
 - The Metrics page, like the catalogue, says to open it from a project when none is known, and sends no request.
 - Keyboard and screen reader use: the filter switches, the filters, the cards and the dialogs can be reached and
   used with the keyboard, the dialogs close on Escape and take the focus, and the active filters are visible.

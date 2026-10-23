@@ -2,7 +2,7 @@
 // project…" opens a dialog here, and Install asks the platform, on this page's own origin, to install it
 // into the catalogue's project. Opened without a project, nothing is offered: installs happen only through
 // a project.
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import ToolDetailModal from "../components/catalogue/ToolDetailModal";
 import { CrossSiteProvider } from "./CrossSiteContext";
@@ -154,5 +154,53 @@ describe("installing a test stays in the project's catalogue", () => {
     expect(screen.queryByRole("link", { name: /install into/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /install into/i })).toBeNull();
     expect(window.open).not.toHaveBeenCalled();
+  });
+});
+
+describe("a test fetched on install says it is downloaded and built", () => {
+  afterEach(() => {
+    vi.mocked(fetchInstallInfo).mockResolvedValue({
+      slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1", index_url: "",
+      installable: true, reason: null,
+    });
+  });
+
+  const fetched = (version: string | null) =>
+    vi.mocked(fetchInstallInfo).mockResolvedValue({
+      slug: "langbite", package_name: "aisc-plugin-langbite", version, index_url: "",
+      installable: true, reason: null, fetched_on_install: true, source: "lux-ai-factory/aisc-plugin-langbite",
+    });
+
+  it("shows the download note and an Install button", async () => {
+    fetched("0.1.1");
+    const dialog = await openDialog();
+    expect(
+      within(dialog).getByText("Downloaded from GitHub and built on install; this can take a minute."),
+    ).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Install" })).toBeEnabled();
+  });
+
+  it("says Downloading and building… and disables the button while the request runs", async () => {
+    fetched("0.1.1");
+    vi.mocked(installTest).mockReturnValue(new Promise(() => {}));
+    const dialog = await openDialog();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Install" }));
+    expect(within(dialog).getByRole("button", { name: "Downloading and building…" })).toBeDisabled();
+  });
+
+  it("can be installed while its version is not known yet", async () => {
+    fetched(null);
+    const dialog = await openDialog();
+    expect(within(dialog).getByText(/version decided on install/i)).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Install" })).toBeEnabled();
+  });
+
+  it("a test not fetched on install does not show the note", async () => {
+    vi.mocked(fetchInstallInfo).mockResolvedValue({
+      slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1", index_url: "",
+      installable: true, reason: null, fetched_on_install: false, source: null,
+    });
+    const dialog = await openDialog();
+    expect(within(dialog).queryByText(/downloaded from github/i)).toBeNull();
   });
 });

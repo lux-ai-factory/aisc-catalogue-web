@@ -137,12 +137,17 @@ export async function fetchMetrics(): Promise<Metric[]> {
 export interface InstallInfo {
   slug: string;
   package_name: string;
-  /** null when the index carries no installable release of this distribution. */
+  /** null when the index carries no installable release, or, for a test fetched on install,
+   *  when GitHub could not be read in time (the version is then decided on install). */
   version: string | null;
   index_url: string;
   installable: boolean;
-  /** Why it is not installable; null when it is. */
+  /** Why it is not installable, or an explanatory note when it is; null when there is nothing to say. */
   reason: string | null;
+  /** true when the platform downloads the plugin from GitHub and builds it on install. */
+  fetched_on_install?: boolean;
+  /** The GitHub repository a fetched test comes from ("lux-ai-factory/<repo>"), else null. */
+  source?: string | null;
 }
 
 /** GET the install descriptor for a tool. `installable=false` carries a `reason`. */
@@ -153,10 +158,17 @@ export async function fetchInstallInfo(slug: string): Promise<InstallInfo> {
   return res.data;
 }
 
+/** The platform may download and build a plugin for about 10 minutes; allow one more before giving up. */
+export const INSTALL_TIMEOUT_MS = 11 * 60 * 1000;
+
 /** POST: install a test into the project this catalogue belongs to. The
  *  platform installs it in the engine with the person's sign-in; a refusal carries `detail`. */
 export async function installTest(slug: string): Promise<{ slug: string; package_name: string; version: string }> {
   // one path segment: a slug with "/" or ".." must not reach another route with the admin's sign-in
-  const res = await axios.post(`${apiBase()}/tool/${encodeURIComponent(slug)}/install`);
+  const res = await axios.post(
+    `${apiBase()}/tool/${encodeURIComponent(slug)}/install`,
+    undefined,
+    { timeout: INSTALL_TIMEOUT_MS },
+  );
   return res.data;
 }

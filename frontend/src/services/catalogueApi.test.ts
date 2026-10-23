@@ -68,6 +68,11 @@ describe("a slug is one path segment", () => {
     expect(url).toBe("/api/projects/acme/catalogue/api/tool/..%2F..%2Fprojects%2Fx/install");
   });
 
+  it("installTest waits up to 11 minutes, as the platform may download and build for about 10", async () => {
+    await installTest("langbite");
+    expect(mockedAxios.post.mock.calls[0][2]).toEqual({ timeout: 660000 });
+  });
+
   it("fetchInstallInfo encodes it", async () => {
     await fetchInstallInfo("a/b");
     const url: string = mockedAxios.get.mock.calls[0][0];
