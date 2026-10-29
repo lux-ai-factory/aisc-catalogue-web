@@ -102,7 +102,6 @@ describe("ToolDetailModal install action", () => {
 describe("ToolDetailModal compliance questions", () => {
   const question = (id: number, text: string) => ({
     id,
-    tool_id: 1,
     order: id,
     text,
     article: null,

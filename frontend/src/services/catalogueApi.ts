@@ -78,7 +78,6 @@ export type CompletionStatus = "full" | "partial" | "stub";
 /** Compliance question extracted from a control questionnaire. */
 export interface Question {
   id: number;
-  tool_id: number;
   order: number;
   text: string;
   article: string | null;
