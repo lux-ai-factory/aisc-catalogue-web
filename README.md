@@ -1,26 +1,37 @@
 # AISC catalogue (local)
 
 What a local [AISC](https://github.com/lux-ai-factory/aisc) install needs from the catalogue of AI verification
-tools and compliance controls: the pages a project's catalogue is shown with, and the package index the tests are
-installed from. The catalogue's data is not here: AISC reads it from the hosted catalogue through its platform,
-and keeps each project's own copy.
+tools and compliance controls, for step 3 (Choose tests and checklists): the pages a project's catalogue is shown
+with (service `catalogue-private`), and the package index the tests are installed from (service `devpi`).
+
+## How it works
+
+The catalogue's data is not here. The AISC platform (service `platform`) reads it from the hosted public
+catalogue and serves each project its own catalogue: the public one read live, or a private copy kept in the
+project's database, both with the install's Local entries. The pages in `frontend/` read that through the platform,
+with the person's own sign-in. When an admin installs a test, `plugin-publisher` builds its package and puts it on
+`devpi`, and the engine installs it from there. The whole picture is in `docs/architecture.md` of the aisc
+repository ([on GitHub](https://github.com/lux-ai-factory/aisc/blob/pilot/docs/architecture.md)).
 
 | Folder | What it is | In AISC |
 |---|---|---|
-| [`frontend/`](frontend) | The catalogue pages of one AISC project (React 19, react-router 7, Vite 7): browse and filter the tests and controls, see their metrics, and install them into the project. They read the project's catalogue from the AISC platform on the same origin, with the person's own sign-in. | the `catalogue-private` service, served under `/project-catalogue/` |
+| [`frontend/`](frontend) | The catalogue pages of one AISC project (React 19, react-router 7, Vite 7): browse and filter the tests and checklists, see their metrics, install them into the project, and, for an admin, give a Local test its dimensions. | the `catalogue-private` service, served under `/project-catalogue/` on the launcher's port |
 | [`devpi/`](devpi) | A [devpi](https://devpi.net) package index with one index, `root/public`, that the tests' packages are published to and installed from. The server runs as the `devpi` user (uid 10001), never as root. | the `devpi` service |
 
-Both are built by AISC's compose files; neither is meant to run alone.
+## Run it
+
+Both run inside the AISC stack: from the aisc folder, `uv run scripts/aisc.py start` builds and starts them with
+the rest. Neither is meant to run alone (the standalone engine of the aisc repository runs `devpi` too).
 
 ## devpi environment
 
-| Variable | Default | What it is |
-|---|---|---|
-| `DEVPI_ROOT_PASSWORD` | none, required | root's password, set on the first start. Without it devpi does not start: whoever logs in as root can publish packages the engine installs and runs. A restart must use the same one. |
-| `DEVPI_INDEX` | `root/public` | the index the tests are published to, created on the first start. It must be one of root's, `root/<name>`. |
-| `DEVPI_HOST` | `0.0.0.0` | the address the server listens on once set up (the setup itself listens on 127.0.0.1 only). |
-| `DEVPI_PORT` | `3141` | the port it listens on. |
-| `DEVPISERVER_SERVERDIR` | `/data` | the server's data directory; mount a volume or a directory here. An empty one is initialised on the first start. Started as root (the default), the image hands it to the `devpi` user (uid 10001) and goes on as that user, so a volume an older image filled as root keeps its index and password. |
+| Variable | Default | In the stack | What it is |
+|---|---|---|---|
+| `DEVPI_ROOT_PASSWORD` | none, required | generated into `env.secrets` | root's password, set on the first start. Without it devpi does not start: whoever logs in as root can publish packages the engine installs and runs. A restart must use the same one. |
+| `DEVPI_INDEX` | `root/public` | `root/public` | the index the tests are published to, created on the first start. It must be one of root's, `root/<name>`. |
+| `DEVPI_HOST` | `0.0.0.0` | default | the address the server listens on once set up (the setup itself listens on 127.0.0.1 only). |
+| `DEVPI_PORT` | `3141` | default | the port it listens on. |
+| `DEVPISERVER_SERVERDIR` | `/data` | volume `devpi_data` | the server's data directory; mount a volume or a directory here. An empty one is initialised on the first start. Started as root (the default), the image hands it to the `devpi` user (uid 10001) and goes on as that user, so a volume an older image filled as root keeps its index and password. |
 
 ## Build
 
