@@ -77,7 +77,6 @@ describe("installCoordinates", () => {
         installable: true,
         reason: null,
         fetched_on_install: true,
-        source: "lux-ai-factory/aisc-plugin-langbite",
       })
     ).toEqual({
       pkg: "aisc-plugin-langbite",
@@ -96,7 +95,6 @@ describe("installCoordinates", () => {
         installable: false,
         reason: "GitHub could not be read",
         fetched_on_install: true,
-        source: "lux-ai-factory/aisc-plugin-langbite",
       })
     ).toBeNull();
   });

@@ -143,8 +143,6 @@ export interface InstallInfo {
   reason: string | null;
   /** true when the platform downloads the plugin from GitHub and builds it on install. */
   fetched_on_install?: boolean;
-  /** The GitHub repository a fetched test comes from ("lux-ai-factory/<repo>"), else null. */
-  source?: string | null;
 }
 
 /** GET the install descriptor for a tool. `installable=false` carries a `reason`. */

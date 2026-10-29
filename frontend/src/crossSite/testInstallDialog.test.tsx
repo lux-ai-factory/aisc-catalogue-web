@@ -167,7 +167,7 @@ describe("a test fetched on install says it is downloaded and built", () => {
   const fetched = (version: string | null) =>
     vi.mocked(fetchInstallInfo).mockResolvedValue({
       slug: "langbite", package_name: "aisc-plugin-langbite", version,
-      installable: true, reason: null, fetched_on_install: true, source: "lux-ai-factory/aisc-plugin-langbite",
+      installable: true, reason: null, fetched_on_install: true,
     });
 
   it("shows the download note and an Install button", async () => {
@@ -197,7 +197,7 @@ describe("a test fetched on install says it is downloaded and built", () => {
   it("a test not fetched on install does not show the note", async () => {
     vi.mocked(fetchInstallInfo).mockResolvedValue({
       slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1",
-      installable: true, reason: null, fetched_on_install: false, source: null,
+      installable: true, reason: null, fetched_on_install: false,
     });
     const dialog = await openDialog();
     expect(within(dialog).queryByText(/downloaded from github/i)).toBeNull();
