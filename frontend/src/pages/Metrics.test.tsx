@@ -27,7 +27,7 @@ const METRIC = {
 
 const TOOL = { id: 7, slug: "langbite", name: "LangBiTe", description: "", tags: [] } as unknown as Tool;
 
-const INFO = { mode: "public" as const, chosen_at: null, updated_at: null, can_update: false };
+const INFO = { mode: "public" as const, updated_at: null, can_update: false };
 
 const renderPage = () =>
   render(

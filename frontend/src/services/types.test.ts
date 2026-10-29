@@ -21,6 +21,7 @@ describe("fields nothing reads are not declared", () => {
     ["catalogueApi", "Question", "tool_id"],
     ["catalogueApi", "InstallInfo", "index_url"],
     ["catalogueApi", "InstallInfo", "source"],
+    ["projectCatalogue", "ProjectCatalogueInfo", "chosen_at"],
   ] as const)("%s: %s has no %s", (file, name, field) => {
     expect(fieldsOf(sources[file], name)).not.toContain(field);
   });

@@ -92,7 +92,7 @@ describe("platform calls", () => {
   beforeEach(() => openAt("?project=acme"));
 
   it("fetchProjectCatalogue GETs the project base", async () => {
-    const info = { mode: "private", chosen_at: null, updated_at: null, can_update: false };
+    const info = { mode: "private", updated_at: null, can_update: false };
     mockedAxios.get.mockResolvedValue({ data: info });
     await expect(fetchProjectCatalogue()).resolves.toEqual(info);
     expect(mockedAxios.get).toHaveBeenCalledWith("/api/projects/acme/catalogue");

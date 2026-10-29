@@ -43,7 +43,6 @@ export const catalogueBase = (slug: string) => `${projectBase(slug)}/api`;
 
 export interface ProjectCatalogueInfo {
   mode: "private" | "public" | null;
-  chosen_at: string | null;
   updated_at: string | null;
   can_update: boolean;
 }

@@ -78,7 +78,6 @@ const TOOLS = [
 
 const INFO = {
   mode: "private" as const,
-  chosen_at: "2026-09-01T10:00:00Z",
   updated_at: "2026-10-02T10:00:00Z",
   can_update: true,
 };
