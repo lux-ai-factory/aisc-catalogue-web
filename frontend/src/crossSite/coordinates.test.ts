@@ -13,7 +13,6 @@ describe("installCoordinates", () => {
         slug: "langbite",
         package_name: "aisc-plugin-langbite",
         version: "0.1.2",
-        index_url: "http://devpi:3141/root/public/+simple/",
         installable: true,
         reason: null,
       })
@@ -33,7 +32,6 @@ describe("installCoordinates", () => {
         slug: "langbite-fr",
         package_name: "aisc-plugin-langbite",
         version: "0.1.2",
-        index_url: "x",
         installable: true,
         reason: null,
       })?.slug
@@ -46,7 +44,6 @@ describe("installCoordinates", () => {
         slug: "deepeval",
         package_name: "deepeval",
         version: null,
-        index_url: "http://devpi:3141/root/public/+simple/",
         installable: false,
         reason: "deepeval is not on the index",
       })
@@ -65,7 +62,6 @@ describe("installCoordinates", () => {
         slug: "langbite",
         package_name: "aisc-plugin-langbite",
         version: null,
-        index_url: "x",
         installable: true,
         reason: null,
       })
@@ -78,7 +74,6 @@ describe("installCoordinates", () => {
         slug: "langbite",
         package_name: "aisc-plugin-langbite",
         version: null,
-        index_url: "x",
         installable: true,
         reason: null,
         fetched_on_install: true,
@@ -98,7 +93,6 @@ describe("installCoordinates", () => {
         slug: "langbite",
         package_name: "aisc-plugin-langbite",
         version: null,
-        index_url: "x",
         installable: false,
         reason: "GitHub could not be read",
         fetched_on_install: true,

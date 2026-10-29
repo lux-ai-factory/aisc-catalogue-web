@@ -138,7 +138,6 @@ export interface InstallInfo {
   /** null when the index carries no installable release, or, for a test fetched on install,
    *  when GitHub could not be read in time (the version is then decided on install). */
   version: string | null;
-  index_url: string;
   installable: boolean;
   /** Why it is not installable, or an explanatory note when it is; null when there is nothing to say. */
   reason: string | null;

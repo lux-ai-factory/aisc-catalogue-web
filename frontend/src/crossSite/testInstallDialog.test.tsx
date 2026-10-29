@@ -12,7 +12,7 @@ import { projectSlug } from "../services/projectCatalogue";
 
 vi.mock("../services/catalogueApi", () => ({
   fetchInstallInfo: vi.fn().mockResolvedValue({
-    slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1", index_url: "",
+    slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1",
     installable: true, reason: null,
   }),
   installTest: vi.fn(),
@@ -159,14 +159,14 @@ describe("installing a test stays in the project's catalogue", () => {
 describe("a test fetched on install says it is downloaded and built", () => {
   afterEach(() => {
     vi.mocked(fetchInstallInfo).mockResolvedValue({
-      slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1", index_url: "",
+      slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1",
       installable: true, reason: null,
     });
   });
 
   const fetched = (version: string | null) =>
     vi.mocked(fetchInstallInfo).mockResolvedValue({
-      slug: "langbite", package_name: "aisc-plugin-langbite", version, index_url: "",
+      slug: "langbite", package_name: "aisc-plugin-langbite", version,
       installable: true, reason: null, fetched_on_install: true, source: "lux-ai-factory/aisc-plugin-langbite",
     });
 
@@ -196,7 +196,7 @@ describe("a test fetched on install says it is downloaded and built", () => {
 
   it("a test not fetched on install does not show the note", async () => {
     vi.mocked(fetchInstallInfo).mockResolvedValue({
-      slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1", index_url: "",
+      slug: "langbite", package_name: "aisc-plugin-langbite", version: "0.1.1",
       installable: true, reason: null, fetched_on_install: false, source: null,
     });
     const dialog = await openDialog();

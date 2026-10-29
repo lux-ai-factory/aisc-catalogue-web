@@ -58,7 +58,6 @@ describe("ToolDetailModal install action", () => {
       slug: "example",
       package_name: "aisc-plugin-example",
       version: "0.1.2",
-      index_url: "http://devpi:3141/root/public/+simple/",
       installable: true,
       reason: null,
     });
@@ -74,7 +73,6 @@ describe("ToolDetailModal install action", () => {
       slug: "example",
       package_name: "deepeval",
       version: null,
-      index_url: "http://devpi:3141/root/public/+simple/",
       installable: false,
       reason: "deepeval is not on the index",
     });
@@ -113,7 +111,6 @@ describe("ToolDetailModal compliance questions", () => {
       slug: "example",
       package_name: "aisc-plugin-example",
       version: null,
-      index_url: "",
       installable: false,
       reason: null,
     });
@@ -139,7 +136,7 @@ describe("ToolDetailModal control install", () => {
 
   it("takes the control path for an entry with the control tag: without a handshake, it says how to reach it", async () => {
     sessionStorage.clear();
-    mockInstallInfo.mockResolvedValue({ slug: "c", package_name: "", version: "", index_url: "", installable: false, reason: "a control" });
+    mockInstallInfo.mockResolvedValue({ slug: "c", package_name: "", version: "", installable: false, reason: "a control" });
     show(controlEntry());
     expect(await screen.findByText(/install this control/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /install into a project/i })).toBeNull();
@@ -178,7 +175,7 @@ describe("ToolDetailModal control install", () => {
   });
 
   it("is not offered for a framework with questions", async () => {
-    mockInstallInfo.mockResolvedValue({ slug: "f", package_name: "", version: "", index_url: "", installable: false, reason: "not on the index" });
+    mockInstallInfo.mockResolvedValue({ slug: "f", package_name: "", version: "", installable: false, reason: "not on the index" });
     show(makeTool({ tags: [{ id: 2, slug: "framework", label: "Framework", section: "type" }] as Tool["tags"],
                     questions: [{ id: 1, order: 1, text: "Q?" }] as Tool["questions"] }));
     await screen.findByText(/Compliance questions/);
@@ -189,7 +186,7 @@ describe("ToolDetailModal control install", () => {
 
 describe("ToolDetailModal missing values", () => {
   beforeEach(() => {
-    mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, index_url: "", installable: false, reason: "not on the index" });
+    mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, installable: false, reason: "not on the index" });
   });
 
   it("shows '-' for a missing provider, branch, version and maturity, not the old form's placeholders", async () => {
@@ -218,7 +215,7 @@ describe("ToolDetailModal missing values", () => {
 
 describe("ToolDetailModal is a dialog", () => {
   beforeEach(() => {
-    mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, index_url: "", installable: false, reason: "not on the index" });
+    mockInstallInfo.mockResolvedValue({ slug: "example", package_name: "", version: null, installable: false, reason: "not on the index" });
   });
 
   const showWith = (onClose: () => void) =>
