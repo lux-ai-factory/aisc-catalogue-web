@@ -156,7 +156,8 @@ const Catalogue: React.FC = () => {
   });
 
   // ── Fetch the tools and tags of the project's catalogue ──
-  const loadData = async () => {
+  // Resolves to the tools loaded, or null when the load failed.
+  const loadData = async (): Promise<Tool[] | null> => {
     try {
       setLoading(true);
       setError(null);
@@ -166,12 +167,22 @@ const Catalogue: React.FC = () => {
       ]);
       setTools(toolsData);
       setTags(tagsData);
+      return toolsData;
     } catch (err) {
       console.error("Failed to load catalogue data:", err);
       setError("Failed to load catalogue data. Please try again.");
+      return null;
     } finally {
       setLoading(false);
     }
+  };
+
+  // A local test's dimensions were saved: load the catalogue again, and the
+  // open entry shows what the platform now has for it.
+  const handleDimensionsSaved = async () => {
+    const reloaded = await loadData();
+    if (!reloaded) return;
+    setSelectedTool((open) => (open && reloaded.find((t) => t.slug === open.slug)) || open);
   };
 
   // The catalogue loads once the platform confirms the project chose one;
@@ -430,6 +441,9 @@ const Catalogue: React.FC = () => {
           onInstalled={(slug) =>
             setTools((all) => all.map((t) => (t.slug === slug ? { ...t, aisc_installed: true } : t)))
           }
+          // an admin gives a local test its dimensions; only a private copy has local tests
+          canClassify={projectInfo?.mode === "private" && projectInfo.can_update}
+          onDimensionsSaved={handleDimensionsSaved}
         />
       )}
 

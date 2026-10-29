@@ -10,11 +10,13 @@ import {
   fetchProjectCatalogue,
   updateFromPublic,
   fetchProjectDimensions,
+  setLocalDimensions,
 } from "./projectCatalogue";
 
 const mockedAxios = axios as unknown as {
   get: ReturnType<typeof vi.fn>;
   post: ReturnType<typeof vi.fn>;
+  put: ReturnType<typeof vi.fn>;
 };
 
 const openAt = (search: string) =>
@@ -108,6 +110,25 @@ describe("platform calls", () => {
     await expect(fetchProjectDimensions()).resolves.toEqual(["fairness"]);
     expect(mockedAxios.get).toHaveBeenCalledWith(
       "/api/projects/acme/catalogue/api/project-dimensions"
+    );
+  });
+
+  it("setLocalDimensions PUTs the REQ ids to the local package's dimensions", async () => {
+    const saved = { package_name: "my-probe", dimensions: ["REQ2", "REQ5"] };
+    mockedAxios.put.mockResolvedValue({ data: saved });
+    await expect(setLocalDimensions("my-probe", ["REQ2", "REQ5"])).resolves.toEqual(saved);
+    expect(mockedAxios.put).toHaveBeenCalledWith(
+      "/api/projects/acme/catalogue/local/my-probe/dimensions",
+      { dimensions: ["REQ2", "REQ5"] }
+    );
+  });
+
+  it("setLocalDimensions keeps the package name one path segment", async () => {
+    mockedAxios.put.mockResolvedValue({ data: { package_name: "a/../b", dimensions: [] } });
+    await setLocalDimensions("a/../b", []);
+    expect(mockedAxios.put).toHaveBeenCalledWith(
+      "/api/projects/acme/catalogue/local/a%2F..%2Fb/dimensions",
+      { dimensions: [] }
     );
   });
 });

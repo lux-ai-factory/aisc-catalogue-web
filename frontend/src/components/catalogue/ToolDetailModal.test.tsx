@@ -4,7 +4,9 @@ import ToolDetailModal from "./ToolDetailModal";
 import { CrossSiteProvider } from "../../crossSite/CrossSiteContext";
 import { STORAGE_KEY } from "../../crossSite/connect";
 import type { Tool } from "../../services/catalogueApi";
+import type { Tag } from "../../services/catalogueApi";
 import { fetchInstallInfo } from "../../services/catalogueApi";
+import { setLocalDimensions } from "../../services/projectCatalogue";
 
 // The modal resolves install coordinates on mount: the engine installs a
 // distribution from the index, never a catalogue entry, so the footer can only
@@ -14,6 +16,11 @@ import { fetchInstallInfo } from "../../services/catalogueApi";
 
 vi.mock("../../services/catalogueApi", () => ({
   fetchInstallInfo: vi.fn(),
+}));
+
+vi.mock("../../services/projectCatalogue", async (actual) => ({
+  ...(await actual<typeof import("../../services/projectCatalogue")>()),
+  setLocalDimensions: vi.fn(),
 }));
 
 const mockInstallInfo = vi.mocked(fetchInstallInfo);
@@ -244,5 +251,82 @@ describe("ToolDetailModal is a dialog", () => {
     await screen.findByRole("dialog", { name: "Example" });
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ToolDetailModal dimensions of a local test", () => {
+  const tagOf = (slug: string, section: Tag["section"], label = slug) =>
+    ({ id: Math.floor(Math.random() * 1e6), slug, label, section, color_bg: "#fff", _color_text: "#000", sort_order: 0 }) as Tag;
+  const localTest = (dimensions: Tag[] = []) =>
+    makeTool({
+      slug: "local-my-probe",
+      package_name: "my-probe",
+      aisc_local: true,
+      aisc_installed: true,
+      tags: [tagOf("source-local", "source", "Local"), tagOf("test", "type"), ...dimensions],
+    });
+  const showWith = (tool: Tool, canClassify: boolean, onDimensionsSaved = vi.fn()) =>
+    render(
+      <CrossSiteProvider>
+        <ToolDetailModal
+          tool={tool}
+          onClose={() => {}}
+          canClassify={canClassify}
+          onDimensionsSaved={onDimensionsSaved}
+        />
+      </CrossSiteProvider>
+    );
+  const box = (name: RegExp) => screen.getByRole("checkbox", { name });
+
+  it("lets an admin of a private catalogue tick REQ1 to REQ11, starting from the entry's own", () => {
+    showWith(localTest([tagOf("transparency", "dimension", "Transparency")]), true);
+    expect(screen.getByRole("group", { name: "Dimensions" })).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(11);
+    expect(box(/^REQ4 Transparency/)).toBeChecked();
+    expect(box(/^REQ1 Human Agency/)).not.toBeChecked();
+  });
+
+  it("is not offered to someone who cannot classify", () => {
+    showWith(localTest(), false);
+    expect(screen.queryByRole("group", { name: "Dimensions" })).toBeNull();
+  });
+
+  it("is not offered for an entry that is not a local test", () => {
+    showWith(makeTool({ package_name: "aisc-plugin-x", tags: [tagOf("aesia", "source"), tagOf("test", "type")] }), true);
+    expect(screen.queryByRole("group", { name: "Dimensions" })).toBeNull();
+    showWith(makeTool({ package_name: "x", tags: [tagOf("source-local", "source"), tagOf("control", "type")] }), true);
+    expect(screen.queryByRole("group", { name: "Dimensions" })).toBeNull();
+  });
+
+  it("saves the ticked REQ ids in order under the entry's package, then says the catalogue changed", async () => {
+    vi.mocked(setLocalDimensions).mockResolvedValue({ package_name: "my-probe", dimensions: ["REQ2", "REQ4"] });
+    const saved = vi.fn();
+    showWith(localTest([tagOf("transparency", "dimension")]), true, saved);
+    fireEvent.click(box(/^REQ2 /));
+    fireEvent.click(screen.getByRole("button", { name: "Save dimensions" }));
+    expect(await screen.findByText("Dimensions saved.")).toBeInTheDocument();
+    expect(setLocalDimensions).toHaveBeenCalledWith("my-probe", ["REQ2", "REQ4"]);
+    expect(saved).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the platform's answer when the save is refused", async () => {
+    vi.mocked(setLocalDimensions).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 403, data: { detail: "classifying a local plugin takes an admin" } },
+    });
+    const saved = vi.fn();
+    showWith(localTest(), true, saved);
+    fireEvent.click(screen.getByRole("button", { name: "Save dimensions" }));
+    expect(await screen.findByText("classifying a local plugin takes an admin")).toBeInTheDocument();
+    expect(saved).not.toHaveBeenCalled();
+  });
+
+  it("shows a plain message when the answer carries no text", async () => {
+    vi.mocked(setLocalDimensions).mockRejectedValue(new Error("network"));
+    showWith(localTest(), true);
+    fireEvent.click(screen.getByRole("button", { name: "Save dimensions" }));
+    expect(
+      await screen.findByText("The dimensions could not be saved. Please try again.")
+    ).toBeInTheDocument();
   });
 });

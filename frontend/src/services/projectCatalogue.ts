@@ -81,3 +81,23 @@ export async function fetchProjectDimensions(): Promise<string[]> {
   );
   return res.data;
 }
+
+/** What the platform kept of a local entry's dimensions: its REQ ids, in order. */
+export interface LocalDimensions {
+  package_name: string;
+  dimensions: string[];
+}
+
+/** Give a local test its dimensions, REQ1 to REQ11, replacing what it had
+ *  (admins of a private catalogue only). */
+export async function setLocalDimensions(
+  packageName: string,
+  dimensions: string[]
+): Promise<LocalDimensions> {
+  // one path segment: a name with "/" or ".." must not reach another route
+  const res = await axios.put<LocalDimensions>(
+    `${projectBase(requireSlug())}/local/${encodeURIComponent(packageName)}/dimensions`,
+    { dimensions }
+  );
+  return res.data;
+}

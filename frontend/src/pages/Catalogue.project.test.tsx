@@ -23,10 +23,25 @@ vi.mock("../services/catalogueApi", () => ({
   fetchInstallInfo: vi.fn(),
 }));
 
-// The detail pop-up as a button that reports an install of its entry, as an install dialog does.
+// The detail pop-up as a button that reports an install of its entry, as an install dialog does, and,
+// when it may classify, one that reports saved dimensions, with the dimensions the entry shows.
 vi.mock("../components/catalogue/ToolDetailModal", () => ({
-  default: ({ tool, onInstalled }: { tool: Tool; onInstalled?: (slug: string) => void }) => (
-    <button onClick={() => onInstalled?.(tool.slug)}>{`install ${tool.name}`}</button>
+  default: ({
+    tool,
+    onInstalled,
+    canClassify,
+    onDimensionsSaved,
+  }: {
+    tool: Tool;
+    onInstalled?: (slug: string) => void;
+    canClassify?: boolean;
+    onDimensionsSaved?: () => void;
+  }) => (
+    <>
+      <button onClick={() => onInstalled?.(tool.slug)}>{`install ${tool.name}`}</button>
+      {canClassify && <button onClick={() => onDimensionsSaved?.()}>{`saved ${tool.name}`}</button>}
+      <span>{`dimensions of ${tool.name}: ${(tool.tags ?? []).filter((t) => t.section === "dimension").map((t) => t.slug).join(" ")}`}</span>
+    </>
   ),
 }));
 
@@ -256,6 +271,33 @@ describe("Catalogue page of a project", () => {
     fireEvent.click(screen.getByRole("button", { name: "install Fair" }));
     expect(await screen.findByText("Installed")).toBeInTheDocument();
     expect(fetchToolsDetailed).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets an admin of a private catalogue classify, and shows the entry as the platform now has it", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Fair" }));
+    expect(screen.getByText("dimensions of Fair: fairness")).toBeInTheDocument();
+    vi.mocked(fetchToolsDetailed).mockResolvedValue([
+      { ...TOOLS[0], tags: [...(TOOLS[0].tags ?? []), tag("transparency", "dimension")] },
+      ...TOOLS.slice(1),
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "saved Fair" }));
+    expect(await screen.findByText("dimensions of Fair: fairness transparency")).toBeInTheDocument();
+    expect(fetchToolsDetailed).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not let someone classify who cannot update", async () => {
+    vi.mocked(fetchProjectCatalogue).mockResolvedValue({ ...INFO, can_update: false });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Fair" }));
+    expect(screen.queryByRole("button", { name: "saved Fair" })).toBeNull();
+  });
+
+  it("does not let anyone classify on a public catalogue, which has no local tests", async () => {
+    vi.mocked(fetchProjectCatalogue).mockResolvedValue({ ...INFO, mode: "public", can_update: true });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Fair" }));
+    expect(screen.queryByRole("button", { name: "saved Fair" })).toBeNull();
   });
 
   it("a dimension and one of its sub-dimensions show only the entries of that sub-dimension", async () => {

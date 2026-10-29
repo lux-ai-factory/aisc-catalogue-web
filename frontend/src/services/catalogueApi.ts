@@ -103,6 +103,8 @@ export interface Tool {
   metrics?: Metric[];
   /** A control's questionnaire, when it has one. */
   questions?: Question[];
+  /** The package the entry installs; a local test's dimensions are saved under it. */
+  package_name?: string | null;
   /** A plugin of the AISC stack, not in the public catalogue. */
   aisc_local?: boolean;
   /** Already installed in the project. */

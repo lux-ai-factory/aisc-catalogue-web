@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import type { Tool } from "../../services/catalogueApi";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { useInstallInfo, type InstallInfoState } from "../../hooks/useInstallInfo";
@@ -6,8 +6,8 @@ import { installCoordinates } from "../../crossSite/coordinates";
 import { useCrossSite } from "../../crossSite/CrossSiteContext";
 import ControlInstall from "../../crossSite/ControlInstall";
 import TestInstall from "../../crossSite/TestInstall";
-import { projectSlug } from "../../services/projectCatalogue";
-import { entryKind, providerName } from "./entry";
+import { projectSlug, setLocalDimensions } from "../../services/projectCatalogue";
+import { entryKind, isLocalTest, providerName, requirementsOf, REQUIREMENTS } from "./entry";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
@@ -169,7 +169,73 @@ interface ToolDetailModalProps {
   onClose: () => void;
   /** An install reached the catalogue's own project (its card then says installed). */
   onInstalled?: (slug: string) => void;
+  /** The person may give a local test its dimensions: an admin of a private catalogue. */
+  canClassify?: boolean;
+  /** A local test's dimensions were saved (the catalogue then loads its entries again). */
+  onDimensionsSaved?: () => void;
 }
+
+/** The text of the platform's refusal, when it gave one. */
+const platformDetail = (err: unknown): string | null => {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  return typeof detail === "string" ? detail : null;
+};
+
+/** An admin ticks a local test's dimensions, REQ1 to REQ11, and saves them
+ *  through the platform under the test's package. */
+const LocalDimensionsEditor: React.FC<{
+  tool: Tool;
+  onSaved?: () => void;
+}> = ({ tool, onSaved }) => {
+  const [ticked, setTicked] = useState<Set<string>>(() => new Set(requirementsOf(tool.tags ?? [])));
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const toggle = (id: string) =>
+    setTicked((now) => {
+      const next = new Set(now);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const save = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await setLocalDimensions(
+        tool.package_name ?? "",
+        REQUIREMENTS.filter((r) => ticked.has(r.id)).map((r) => r.id)
+      );
+      setMessage("Dimensions saved.");
+      onSaved?.();
+    } catch (err) {
+      setMessage(platformDetail(err) ?? "The dimensions could not be saved. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <fieldset aria-labelledby="local-dimensions" style={{ border: "none", padding: 0, margin: "0 0 16px" }}>
+      <div id="local-dimensions" style={styles.sectionLabel}>Dimensions</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "4px 16px" }}>
+        {REQUIREMENTS.map((r) => (
+          <label key={r.id} style={{ ...styles.sectionValue, display: "flex", gap: "6px", alignItems: "baseline" }}>
+            <input type="checkbox" checked={ticked.has(r.id)} onChange={() => toggle(r.id)} />
+            {`${r.id} ${r.title}`}
+          </label>
+        ))}
+      </div>
+      <div style={{ ...styles.actionsRow, marginTop: "10px", alignItems: "center" }}>
+        <button style={styles.actionBtn(false)} disabled={saving} onClick={save}>
+          Save dimensions
+        </button>
+        {message && <span style={styles.sectionValue}>{message}</span>}
+      </div>
+    </fieldset>
+  );
+};
 
 /** The footer's install action, through the AISC platform: a control goes to
  *  the platform's controls app, a test is installed into the catalogue's own
@@ -208,7 +274,13 @@ const InstallAction: React.FC<{
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInstalled }) => {
+const ToolDetailModal: React.FC<ToolDetailModalProps> = ({
+  tool,
+  onClose,
+  onInstalled,
+  canClassify,
+  onDimensionsSaved,
+}) => {
   const isMobile = useIsMobile();
   // every entry comes with its tags (the detailed list)
   const toolTags = tool.tags ?? [];
@@ -519,6 +591,11 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({ tool, onClose, onInst
               </span>
             ))}
           </div>
+        )}
+
+        {/* An admin of a private catalogue gives a local test its dimensions */}
+        {canClassify && isLocalTest(tool) && (
+          <LocalDimensionsEditor tool={tool} onSaved={onDimensionsSaved} />
         )}
 
         {/* ── Target legal requirements ───────────────────── */}
