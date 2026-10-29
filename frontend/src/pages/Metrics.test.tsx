@@ -21,7 +21,7 @@ vi.mock("../services/projectCatalogue", () => ({
 
 const METRIC = {
   id: 1, name: "toxicity_rate", data_type: "float", range_str: "[0, 1]", unit: "ratio",
-  represents: "Share of toxic answers", is_derived: false, formula: null, tool_id: 7,
+  represents: "Share of toxic answers", is_derived: false, formula: null,
   tool: { id: 7, slug: "langbite", name: "LangBiTe" }, dimensions: [],
 } as Metric;
 

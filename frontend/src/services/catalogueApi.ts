@@ -68,7 +68,6 @@ export interface Metric {
   represents: string;
   is_derived: boolean;
   formula: string | null;
-  tool_id: number;
   // Inlined by /metric/ and /tool/?detailed=true
   tool?: { id: number; slug: string; name: string } | null;
   dimensions?: Tag[];
