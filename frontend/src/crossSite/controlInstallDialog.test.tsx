@@ -31,7 +31,6 @@ const OPTIONS = {
 const control = (): Tool =>
   ({
     id: 1, name: "Accuracy checklist", slug: "accuracy-checklist", description: "d", version: "1", licensing: "Open_Source",
-    created_at: "",
     completion_status: "full", metadata: null, metrics: [],
     tags: [{ id: 9, slug: "control", label: "Control", section: "type" }],
   }) as unknown as Tool;

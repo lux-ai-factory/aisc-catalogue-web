@@ -16,6 +16,7 @@ const sources = { catalogueApi, projectCatalogue };
 describe("fields nothing reads are not declared", () => {
   it.each([
     ["catalogueApi", "Metadata", "tool_1_id"],
+    ["catalogueApi", "Tool", "created_at"],
   ] as const)("%s: %s has no %s", (file, name, field) => {
     expect(fieldsOf(sources[file], name)).not.toContain(field);
   });

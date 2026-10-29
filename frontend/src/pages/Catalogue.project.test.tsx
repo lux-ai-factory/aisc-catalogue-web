@@ -66,7 +66,6 @@ const tag = (slug: string, section: Tag["section"], parent?: string): Tag => ({
 const tool = (id: number, name: string, tags: Tag[]): Tool =>
   ({
     id, name, slug: name.toLowerCase(), description: "", version: "1", licensing: "Open_Source",
-    created_at: "",
     completion_status: "full", metadata: null, metrics: [],
     tags: [tag("control", "type"), ...tags],
   }) as Tool;

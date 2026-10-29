@@ -93,7 +93,6 @@ export interface Tool {
   description: string;
   version: string;
   licensing: Licensing;
-  created_at: string;
   /** JSON-LD vt:completionStatus, drives blue (full) vs pink (partial/stub) cards. */
   completion_status?: CompletionStatus;
   // Populated when ?detailed=true

@@ -21,7 +21,6 @@ const makeTool = (over: Partial<Tool> = {}): Tool =>
     description: "desc",
     version: "1.0.0",
     licensing: "Open_Source",
-    created_at: "",
     completion_status: "full",
     metadata: null,
     tags: [],

@@ -25,7 +25,6 @@ vi.mock("../services/projectCatalogue", async (importOriginal) => ({
 const test = (): Tool =>
   ({
     id: 2, name: "LangBiTe", slug: "langbite", description: "d", version: "1", licensing: "Open_Source",
-    created_at: "",
     completion_status: "full", metadata: null, metrics: [], tags: [],
   }) as unknown as Tool;
 
