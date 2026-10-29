@@ -56,7 +56,6 @@ export interface Metadata {
   contextual_guidance?: string | null;
   visualisation?: string | null;
   reporting?: string | null;
-  tool_1_id: number;
 }
 
 /** One row per (tool, metric) pair. */
