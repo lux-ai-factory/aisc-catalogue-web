@@ -71,11 +71,6 @@ const baseStyles = {
     gap: "4px",
     flexShrink: 0,
   },
-  iconSettings: {
-    width: "22px",
-    height: "22px",
-    opacity: 0.4,
-  },
   description: {
     fontSize: "14px",
     color: "#333",
