@@ -196,6 +196,23 @@ describe("Catalogue page of a project", () => {
     expect(await screen.findByText("Private")).toBeInTheDocument();
   });
 
+  it("searches entries with no description by name, and the others by description too", async () => {
+    vi.mocked(fetchProjectDimensions).mockResolvedValue([]);
+    vi.mocked(fetchToolsDetailed).mockResolvedValue([
+      { ...tool(1, "Fair", []), description: null },
+      { ...tool(2, "Private", []), description: "Checks fairness of answers" },
+      { ...tool(3, "Other", []), description: null },
+    ]);
+    renderPage();
+    await screen.findByText("Other");
+    fireEvent.change(screen.getByRole("textbox", { name: "Search the catalogue" }), {
+      target: { value: "fair" },
+    });
+    expect(await screen.findByText("Fair")).toBeInTheDocument();
+    expect(screen.getByText("Private")).toBeInTheDocument();
+    expect(screen.queryByText("Other")).toBeNull();
+  });
+
   it("calls fetch neither on load nor on focus", async () => {
     net.fetch.mockClear();
     renderPage();

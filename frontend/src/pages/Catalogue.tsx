@@ -238,7 +238,7 @@ const Catalogue: React.FC = () => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const nameMatch = tool.name.toLowerCase().includes(q);
-        const descMatch = tool.description.toLowerCase().includes(q);
+        const descMatch = (tool.description ?? "").toLowerCase().includes(q);
         if (!nameMatch && !descMatch) return false;
       }
 

@@ -88,7 +88,8 @@ export interface Tool {
   id: number;
   name: string;
   slug: string;
-  description: string;
+  /** The catalogue sends null for an entry without one. */
+  description: string | null;
   version: string;
   licensing: Licensing;
   /** JSON-LD vt:completionStatus, drives blue (full) vs pink (partial/stub) cards. */
