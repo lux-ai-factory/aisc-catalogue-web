@@ -3,7 +3,8 @@
 # - it runs as a user other than root;
 # - it serves the app under its base path on port 3000, and every page of it (an address the app routes,
 #   like /catalogue, answers with the app, not a 404);
-# - it ships the built app only: no sources, no node_modules, no npm.
+# - it serves the built app only (no sources, source maps or node_modules among the files nginx serves),
+#   and ships no npm.
 # Usage: sh frontend/test-image.sh
 set -eu
 cd "$(dirname "$0")"
@@ -27,8 +28,12 @@ for path in / /catalogue /metrics; do
   echo "$page" | grep -q '<div id="root">' || fail "$path is not the app"
   echo "$page" | grep -q '/project-catalogue/assets/' || fail "$path does not load its assets under the base path"
 done
-for what in /app/src /app/node_modules; do
-  docker exec "$NAME" sh -c "[ ! -e $what ]" || fail "the image ships $what"
-done
+# what nginx serves is the built app only: index.html, assets/, the files of public/ and nginx's own 50x.html
+HTML=/usr/share/nginx/html
+expected=$( (printf '%s\n' index.html assets 50x.html; ls public) | sort -u)
+served=$(docker exec "$NAME" ls -A "$HTML" | sort)
+[ "$served" = "$expected" ] || fail "$HTML holds $(echo $served), not $(echo $expected)"
+sources=$(docker exec "$NAME" find "$HTML" -name src -o -name node_modules -o -name '*.ts' -o -name '*.tsx' -o -name '*.map')
+[ -z "$sources" ] || fail "the image serves sources: $(echo $sources)"
 docker exec "$NAME" sh -c 'command -v npm' >/dev/null 2>&1 && fail "the image ships npm"
 echo "frontend image: all checks passed"
