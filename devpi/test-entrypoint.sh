@@ -219,11 +219,14 @@ docker rm -f "$NAME" >/dev/null && docker volume rm "$VOL" >/dev/null
 start "" && fail "started without a password: root was open to anyone who reaches the port"
 docker logs "$NAME" 2>&1 | grep -q "DEVPI_ROOT_PASSWORD is empty" || fail "no message for a start without a password"
 
+# a stop while devpi-server serves
+start "s3cret" || fail "did not start with a password before the stop check"
 t0=$(date +%s)
 docker stop -t 30 "$NAME" >/dev/null
 took=$(( $(date +%s) - t0 ))
 [ "$took" -lt 5 ] || fail "docker stop took ${took}s: SIGTERM did not reach devpi-server"
-[ "$(docker inspect -f '{{.State.ExitCode}}' "$NAME")" != 137 ] || fail "docker stop ended in SIGKILL (137)"
+code=$(docker inspect -f '{{.State.ExitCode}}' "$NAME")
+[ "$code" = 143 ] || fail "docker stop of a serving devpi-server ended with exit code $code, not 143 (SIGTERM)"
 
 # a stop while the setup server is still coming up
 docker rm -f "$NAME" >/dev/null 2>&1 || true
