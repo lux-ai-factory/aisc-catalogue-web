@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { Tool } from "../../services/catalogueApi";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { useInstallInfo, type InstallInfoState } from "../../hooks/useInstallInfo";
-import { installCoordinates } from "../../crossSite/coordinates";
+import { coordinatesOf, installCoordinates, preselected, versionsToOffer } from "../../crossSite/coordinates";
 import { useCrossSite } from "../../crossSite/CrossSiteContext";
 import ControlInstall from "../../crossSite/ControlInstall";
 import TestInstall from "../../crossSite/TestInstall";
@@ -239,9 +239,10 @@ const LocalDimensionsEditor: React.FC<{
 
 /** The footer's install action, through the AISC platform: a control goes to
  *  the platform's controls app, a test is installed into the catalogue's own
- *  project (or says Installed when it already is), and anything not installable
- *  says why. Without a project there is nothing to install a test into, so
- *  nothing is offered. */
+ *  project, and anything not installable says why. A project may hold several
+ *  versions of a test, one on: the action says which is on and offers the
+ *  others the stack can install (it says Installed when there is none). Without
+ *  a project there is nothing to install a test into, so nothing is offered. */
 const InstallAction: React.FC<{
   slug: string;
   isControls: boolean;
@@ -251,23 +252,56 @@ const InstallAction: React.FC<{
   onInstalled?: (slug: string) => void;
 }> = ({ slug, isControls, installed, install, style, onInstalled }) => {
   const { handshake, expired } = useCrossSite();
+  const [chosen, setChosen] = useState<string | null>(null);
   if (isControls) {
     return (
       <ControlInstall slug={slug} handshake={handshake} expired={expired} style={style} onInstalled={onInstalled} />
     );
   }
   if (!projectSlug()) return null;
+  const info = install.info;
+  if (info?.versions) {
+    const on = info.versions.find((v) => v.enabled);
+    const offered = versionsToOffer(info);
+    const version = chosen ?? preselected(info);
+    const coordinates = version ? coordinatesOf(info, version) : null;
+    const onNow = on && (
+      <span style={{ color: "#000FDF", fontSize: 13, fontWeight: 700, alignSelf: "center" }}>
+        {`Installed: ${on.version} is on`}
+      </span>
+    );
+    if (!coordinates || offered.length === 0) {
+      return onNow || (installed ? <span style={{ color: "#000FDF", fontSize: 13, fontWeight: 700, alignSelf: "center" }}>Installed</span>
+        : <span style={{ color: "#6b7280", fontSize: 13, alignSelf: "center" }}>{info.reason ?? "Not installable here."}</span>);
+    }
+    return (
+      <>
+        {onNow}
+        <label style={{ fontSize: 13, alignSelf: "center" }}>
+          {"Version "}
+          <select value={version ?? ""} onChange={(e) => setChosen(e.target.value)}>
+            {offered.map((v) => (
+              <option key={v.version} value={v.version}>
+                {v.installed ? `${v.version} (installed, off)` : v.version}
+              </option>
+            ))}
+          </select>
+        </label>
+        <TestInstall key={version} coordinates={coordinates} style={style} onInstalled={onInstalled} />
+      </>
+    );
+  }
   if (installed) {
     return <span style={{ color: "#000FDF", fontSize: 13, fontWeight: 700, alignSelf: "center" }}>Installed</span>;
   }
-  const coordinates = installCoordinates(install.info);
+  const coordinates = installCoordinates(info);
   if (coordinates) {
     return <TestInstall coordinates={coordinates} style={style} onInstalled={onInstalled} />;
   }
   return (
     <span style={{ color: "#6b7280", fontSize: 13, alignSelf: "center" }}>
       {install.error
-        || (install.info ? (install.info.reason ?? "Not installable here.") : "Checking the package index…")}
+        || (info ? (info.reason ?? "Not installable here.") : "Checking the package index…")}
     </span>
   );
 };
@@ -308,10 +342,10 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({
   const isControls = entryKind(tool) === "controls";
   // Only an entry tagged `control` can be exported as a checklist.
   const isInstallableControl = typeTags.some((t) => t.slug === "control");
-  // The AISC platform answers install-info for a test of the catalogue's project that is not installed
-  // yet; a control's install goes to the controls app and never uses it.
+  // The AISC platform answers install-info for a test of the catalogue's project, installed or not (it
+  // lists the versions the project holds); a control's install goes to the controls app and never uses it.
   const installed = !isInstallableControl && !!tool.aisc_installed;
-  const install = useInstallInfo(!isInstallableControl && !installed && projectSlug() ? tool.slug : null);
+  const install = useInstallInfo(!isInstallableControl && projectSlug() ? tool.slug : null);
   const provider = providerName(meta);
   const sourceLabel =
     sourceTags.map((t) => t.label).join(", ") || provider || "";

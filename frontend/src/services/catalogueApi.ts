@@ -144,6 +144,16 @@ export interface InstallInfo {
   reason: string | null;
   /** true when the platform downloads the plugin from GitHub and builds it on install. */
   fetched_on_install?: boolean;
+  /** Every version of the package, newest first: whether this stack can install it, whether the project
+   *  holds it and whether it is the one on (one per package). Absent from the public catalogue's answer. */
+  versions?: VersionState[];
+}
+
+export interface VersionState {
+  version: string;
+  installable: boolean;
+  installed: boolean;
+  enabled: boolean;
 }
 
 /** GET the install descriptor for a tool. `installable=false` carries a `reason`. */
@@ -159,11 +169,14 @@ export const INSTALL_TIMEOUT_MS = 11 * 60 * 1000;
 
 /** POST: install a test into the project this catalogue belongs to. The
  *  platform installs it in the engine with the person's sign-in; a refusal carries `detail`. */
-export async function installTest(slug: string): Promise<{ slug: string; package_name: string; version: string }> {
+export async function installTest(
+  slug: string,
+  version?: string,
+): Promise<{ slug: string; package_name: string; version: string }> {
   // one path segment: a slug with "/" or ".." must not reach another route with the admin's sign-in
   const res = await axios.post(
     `${apiBase()}/tool/${encodeURIComponent(slug)}/install`,
-    undefined,
+    version === undefined ? undefined : { version },
     { timeout: INSTALL_TIMEOUT_MS },
   );
   return res.data;

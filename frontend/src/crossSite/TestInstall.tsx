@@ -39,7 +39,8 @@ export default function TestInstall({
   const install = () => {
     setPending(true);
     setError(null);
-    installTest(coordinates.slug)
+    (coordinates.chosen === undefined ? installTest(coordinates.slug)
+      : installTest(coordinates.slug, coordinates.chosen))
       .then(() => {
         setDone(true);
         setPending(false);
@@ -82,6 +83,11 @@ export default function TestInstall({
                 </div>
               )}
               <div style={s.muted}>{`Into the project ${projectSlug() ?? ""}`}</div>
+              {coordinates.turnsOff && (
+                <div style={s.muted}>
+                  {`Version ${coordinates.turnsOff} is turned off: one version is on at a time. Its settings and evaluations stay.`}
+                </div>
+              )}
             </div>
             {done ? (
               <>

@@ -138,7 +138,9 @@ describe("installing a test stays in the project's catalogue", () => {
     await screen.findByRole("dialog", { name: "LangBiTe" });
     expect(screen.getByText("Installed")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /install into this project/i })).toBeNull();
-    expect(fetchInstallInfo).not.toHaveBeenCalled();
+    // install-info is asked even so, for the versions it lists (testVersions.test.tsx); an answer
+    // without them, as the public catalogue gives, changes nothing
+    expect(fetchInstallInfo).toHaveBeenCalledWith("langbite");
   });
 
   it("without a project, offers no install at all", async () => {
