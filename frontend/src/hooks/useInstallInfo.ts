@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchInstallInfo } from "../services/catalogueApi";
 import type { InstallInfo } from "../services/catalogueApi";
 
@@ -7,6 +7,8 @@ export interface InstallInfoState {
   info: InstallInfo | null;
   /** Set when the install service could not be reached at all. */
   error: string | null;
+  /** Ask again, as after an install: the last answer stays shown until the new one comes. */
+  reload: () => void;
 }
 
 /**
@@ -18,15 +20,18 @@ export interface InstallInfoState {
 export function useInstallInfo(slug: string | null): InstallInfoState {
   const [info, setInfo] = useState<InstallInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [round, setRound] = useState(0);
+  const asked = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    setInfo(null);
+    if (asked.current !== slug) setInfo(null);                 // another entry: nothing of the last one shows
+    asked.current = slug;
     setError(null);
     if (slug === null) return;
     fetchInstallInfo(slug)
       .then((answer) => { if (!cancelled) setInfo(answer); })
       .catch(() => { if (!cancelled) setError("Could not reach the catalogue's install service."); });
     return () => { cancelled = true; };
-  }, [slug]);
-  return { info, error };
+  }, [slug, round]);
+  return { info, error, reload: () => setRound((n) => n + 1) };
 }

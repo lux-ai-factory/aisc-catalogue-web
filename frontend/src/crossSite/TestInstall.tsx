@@ -16,10 +16,13 @@ export default function TestInstall({
   coordinates,
   style,
   onInstalled,
+  onClosedInstalled,
 }: {
   coordinates: InstallCoordinates;
   style: React.CSSProperties;
   onInstalled?: (slug: string) => void;
+  /** The dialog was closed after an install: what it showed may be read again now. */
+  onClosedInstalled?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -27,7 +30,10 @@ export default function TestInstall({
   const [done, setDone] = useState(false);
   const dialogRef = useFocusOnOpen<HTMLDivElement>(open);
 
-  const close = () => setOpen(false);
+  const close = () => {
+    setOpen(false);
+    if (done) onClosedInstalled?.();
+  };
 
   const start = () => {
     setOpen(true);

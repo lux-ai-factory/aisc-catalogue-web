@@ -93,4 +93,22 @@ describe("several versions of a test", () => {
     await within(dialog).findByText(/installed in this project/i);
     expect(installTest).toHaveBeenCalledWith("local-aisc-plugin-langbite-mijke");
   });
+
+  it("after an install, the entry reads its versions again: the one installed is on and no longer offered", async () => {
+    vi.mocked(fetchInstallInfo)
+      .mockResolvedValueOnce(info([v("0.3.0"), v("0.2.9"), v("0.2.8", true, true)]))
+      .mockResolvedValue(info([v("0.3.0"), v("0.2.9", true, true), v("0.2.8", true, false)]));
+    vi.mocked(installTest).mockResolvedValue({ slug: "s", package_name: "p", version: "0.2.9" });
+    show(true);
+    fireEvent.change(await screen.findByRole("combobox", { name: /version/i }), { target: { value: "0.2.9" } });
+    fireEvent.click(screen.getByRole("button", { name: /install into this project/i }));
+    const dialog = await screen.findByRole("dialog", { name: /install a test/i });
+    fireEvent.click(within(dialog).getByRole("button", { name: /^install$/i }));
+    expect(await within(dialog).findByText(/installed in this project/i)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: /^close$/i }));
+    expect(await screen.findByText(/0\.2\.9 is on/i)).toBeTruthy();
+    const select = screen.getByRole("combobox", { name: /version/i }) as HTMLSelectElement;
+    expect([...select.options].map((o) => o.value)).toEqual(["0.3.0", "0.2.8"]);
+    expect(select.value).toBe("0.3.0");
+  });
 });

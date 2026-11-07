@@ -253,6 +253,11 @@ const InstallAction: React.FC<{
 }> = ({ slug, isControls, installed, install, style, onInstalled }) => {
   const { handshake, expired } = useCrossSite();
   const [chosen, setChosen] = useState<string | null>(null);
+  // an install changes which version is on: the versions are read again, and the choice starts over
+  const installedNow = () => {
+    setChosen(null);
+    install.reload();
+  };
   if (isControls) {
     return (
       <ControlInstall slug={slug} handshake={handshake} expired={expired} style={style} onInstalled={onInstalled} />
@@ -287,7 +292,8 @@ const InstallAction: React.FC<{
             ))}
           </select>
         </label>
-        <TestInstall key={version} coordinates={coordinates} style={style} onInstalled={onInstalled} />
+        <TestInstall key={version} coordinates={coordinates} style={style} onInstalled={onInstalled}
+                     onClosedInstalled={installedNow} />
       </>
     );
   }
@@ -296,7 +302,7 @@ const InstallAction: React.FC<{
   }
   const coordinates = installCoordinates(info);
   if (coordinates) {
-    return <TestInstall coordinates={coordinates} style={style} onInstalled={onInstalled} />;
+    return <TestInstall coordinates={coordinates} style={style} onInstalled={onInstalled} onClosedInstalled={installedNow} />;
   }
   return (
     <span style={{ color: "#6b7280", fontSize: 13, alignSelf: "center" }}>
