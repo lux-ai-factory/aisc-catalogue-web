@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import Layout from "../components/Layout";
 import NavPill from "../components/NavPill";
 import CatalogueSidebar from "../components/catalogue/CatalogueSidebar";
@@ -8,7 +8,7 @@ import type { SidebarFilters } from "../components/catalogue/CatalogueSidebar";
 import type { Tool, Tag } from "../services/catalogueApi";
 import { fetchToolsDetailed, fetchTags } from "../services/catalogueApi";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { entryKind } from "../components/catalogue/entry";
+import { entryKind, isLocalTest } from "../components/catalogue/entry";
 import { matchesDimensions, subDimensionParents } from "../components/catalogue/dimensions";
 import {
   fetchProjectCatalogue,
@@ -227,8 +227,8 @@ const Catalogue: React.FC = () => {
   );
 
   // ── Filter tools based on sidebar + search ──
-  const filteredTools = useMemo(() => {
-    return tools.filter((tool) => {
+  // `withProject` false leaves out the "For this project" filter, to tell what that filter alone hides
+  const passes = useCallback((tool: Tool, withProject: boolean) => {
       // "Plugin available" toggle: tests only (controls have no plugin), and
       // only fully-ready tools have a usable plugin.
       if (pluginOnly && filters.tab === "tests" && tool.completion_status !== "full")
@@ -247,7 +247,7 @@ const Catalogue: React.FC = () => {
       // "For this project": keep the entries that carry one of the project's
       // dimensions; a sub-dimension counts for its parent. A project with no
       // dimensions yet shows everything.
-      if (forProject && projectDimensions && projectDimensions.length > 0) {
+      if (withProject && forProject && projectDimensions && projectDimensions.length > 0) {
         if (!matchesDimensions(toolTags, projectDimensions, parents)) return false;
       }
 
@@ -289,8 +289,16 @@ const Catalogue: React.FC = () => {
       if (kind && kind !== filters.tab) return false;
 
       return true;
-    });
-  }, [tools, searchQuery, filters, pluginOnly, forProject, projectDimensions, parents]);
+  }, [searchQuery, filters, pluginOnly, forProject, projectDimensions, parents]);
+
+  const filteredTools = useMemo(() => tools.filter((tool) => passes(tool, true)), [tools, passes]);
+
+  // this stack's local tests that only "For this project" hides: they have none of the project's dimensions
+  // until an admin gives them some, so the page says so instead of leaving them to be found by searching
+  const hiddenLocalTests = useMemo(
+    () => tools.filter((tool) => isLocalTest(tool) && passes(tool, false) && !passes(tool, true)).length,
+    [tools, passes]
+  );
 
   // ── Render ──
   return (
@@ -388,6 +396,14 @@ const Catalogue: React.FC = () => {
               )}
               {updateMessage && <span>{updateMessage}</span>}
             </div>
+          )}
+
+          {hiddenLocalTests > 0 && (
+            <p style={s.projectRow}>
+              {`${hiddenLocalTests} local ${hiddenLocalTests === 1 ? "test of this stack is" : "tests of this stack are"} `
+                + `hidden by "For this project": they have none of the project's dimensions yet. Switch it off to `
+                + "see them, or give them dimensions in their entry."}
+            </p>
           )}
 
           {/* Content */}
