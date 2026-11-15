@@ -103,7 +103,7 @@ describe("installing a control stays in the catalogue", () => {
     expect(within(dialog).queryByRole("button", { name: "Install" })).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Close" })).toBeInTheDocument();
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
-    expect(post[0]).toBe(`${CONTROLS}/api/install`);
+    expect(post[0]).toBe(`${CONTROLS}/p/${P2}/api/install`);
     expect(post[1]).toMatchObject({ credentials: "include" });
     expect(Object.fromEntries(post[1].body as URLSearchParams)).toEqual({ slug: "accuracy-checklist", project: P2 });
   });
@@ -182,7 +182,7 @@ describe("installing a control stays in the catalogue", () => {
     expect(await within(dialog).findByText(/sign in to your platform/i)).toBeInTheDocument();
     expect(within(dialog).getByRole("link", { name: /open the platform's install page/i })).toHaveAttribute(
       "href",
-      `${CONTROLS}/install?slug=accuracy-checklist&project=${P1}`,
+      `${CONTROLS}/p/${P1}/install?slug=accuracy-checklist`,
     );
   });
 

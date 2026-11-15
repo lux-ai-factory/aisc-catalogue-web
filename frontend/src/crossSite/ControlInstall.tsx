@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { EXPIRED_MESSAGE, isPlatformAddress, type HandshakePayload } from "./connect";
-import { controlsBase, controlsInstallUrl, projectParam } from "./controlsInstall";
+import { controlsBase, controlsInstallApi, controlsInstallUrl, projectParam } from "./controlsInstall";
 import { useFocusOnOpen } from "../hooks/useFocusOnOpen";
 
 /** What the platform's controls app offers for one control. */
@@ -165,7 +165,7 @@ function Ready({
   const install = () => {
     setPending(true);
     setError(null);
-    fetch(`${base}/api/install`, {
+    fetch(controlsInstallApi(base, project), {
       method: "POST",
       credentials: "include",
       body: new URLSearchParams({ slug, project }),

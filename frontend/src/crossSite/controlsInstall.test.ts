@@ -8,9 +8,9 @@ describe("controlsInstallUrl", () => {
     expect(controlsInstallUrl(hs({ controls: "http://localhost/controls/" }), "accuracy-checklist"))
       .toBe("http://localhost/controls/install?slug=accuracy-checklist");
   });
-  it("preselects the project when it is a pid", () => {
+  it("opens the install page of the project when it is a pid", () => {
     expect(controlsInstallUrl(hs({ controls: "https://aisc.example/controls", project: PID }), "c"))
-      .toBe(`https://aisc.example/controls/install?slug=c&project=${PID}`);
+      .toBe(`https://aisc.example/controls/p/${PID}/install?slug=c`);
   });
   it("leaves out a project that is not a pid", () => {
     expect(controlsInstallUrl(hs({ controls: "http://localhost/controls", project: "x&y=1" }), "c"))
