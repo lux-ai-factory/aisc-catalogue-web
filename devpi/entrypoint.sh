@@ -1,5 +1,6 @@
 #!/bin/sh
-# Start devpi-server and make sure the index the tests are published to exists.
+# Start devpi-server and make sure the index the tests are published to exists, and is not volatile: a
+# version on it is never replaced (a second upload of it is refused) or deleted.
 #
 # The image is built with `devpi-init --no-root-pypi`, so the server comes up
 # with a root user and nothing else; a data directory that has not been
@@ -157,11 +158,19 @@ if auth is None:
 elif after_reset:
     print("devpi: root's password in this volume was not this install's; reset it to DEVPI_ROOT_PASSWORD (packages kept)")
 
-# already there on a restart, which is not an error; anything else is
-if call("GET", f"/root/{index}")[0] != 200:
-    status, _ = call("PUT", f"/root/{index}", {"type": "stage", "bases": [], "volatile": True}, auth)
+# already there on a restart, which is not an error; anything else is. The index is not volatile: a version
+# on it is never replaced or deleted, so the wheel hash an install recorded stays the wheel the index serves.
+status, current = call("GET", f"/root/{index}")
+if status != 200:
+    status, _ = call("PUT", f"/root/{index}", {"type": "stage", "bases": [], "volatile": False}, auth)
     if status not in (200, 201):
         stop(f"could not create the index root/{index} ({status})")
+elif ((current or {}).get("result") or {}).get("volatile") is not False:
+    # a volume an earlier image made with a volatile index
+    status, _ = call("PATCH", f"/root/{index}", ["volatile=False"], auth)
+    if status != 200 or ((call("GET", f"/root/{index}")[1] or {}).get("result") or {}).get("volatile") is not False:
+        stop(f"could not make the index root/{index} non-volatile ({status})")
+    print(f"devpi: index root/{index} made non-volatile")
 PY
 }
 
