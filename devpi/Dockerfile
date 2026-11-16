@@ -1,4 +1,4 @@
-FROM python:3.12.15-slim
+FROM python:3.12.15-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704
 
 # Install curl so the entrypoint script can check server status
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
@@ -17,14 +17,15 @@ RUN mkdir -p $DEVPISERVER_SERVERDIR
 # Initialize the devpi state during build
 RUN devpi-init --serverdir $DEVPISERVER_SERVERDIR --no-root-pypi
 
-# The server runs as this user, never as root. The container starts as root only so the entrypoint can
-# hand the data directory to it (a volume an older image filled as root), then goes on as this user.
+# The server runs as this user, never as root, and the image starts as it. A volume an older image filled as root
+# is handed to it by the stack's one-shot devpi-data-owner (the entrypoint does the same when started as root).
 RUN groupadd --system --gid 10001 devpi \
     && useradd --system --uid 10001 --gid devpi --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin devpi \
     && chown -R devpi:devpi $DEVPISERVER_SERVERDIR
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+USER devpi
 
 EXPOSE 3141
 
