@@ -9,7 +9,6 @@ import {
   projectSlug,
   fetchProjectCatalogue,
   updateFromPublic,
-  fetchProjectDimensions,
 } from "../services/projectCatalogue";
 
 // Every other call is mocked: whatever reaches the network is a stray request.
@@ -49,7 +48,6 @@ vi.mock("../services/projectCatalogue", () => ({
   projectSlug: vi.fn(),
   fetchProjectCatalogue: vi.fn(),
   updateFromPublic: vi.fn(),
-  fetchProjectDimensions: vi.fn(),
 }));
 
 const tag = (slug: string, section: Tag["section"], parent?: string): Tag => ({
@@ -95,7 +93,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(projectSlug).mockReturnValue("acme");
   vi.mocked(fetchProjectCatalogue).mockResolvedValue(INFO);
-  vi.mocked(fetchProjectDimensions).mockResolvedValue(["fairness"]);
   vi.mocked(fetchToolsDetailed).mockResolvedValue(TOOLS);
   vi.mocked(fetchTags).mockResolvedValue([]);
 });
@@ -182,22 +179,14 @@ describe("Catalogue page of a project", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the entries of the project's dimensions, sub-dimensions counting for their parent", async () => {
+  it("shows every entry of the project's catalogue, whatever the project's dimensions", async () => {
     renderPage();
     expect(await screen.findByText("Fair")).toBeInTheDocument();
+    expect(screen.getByText("Private")).toBeInTheDocument();
     expect(screen.getByText("SubFair")).toBeInTheDocument();
-    expect(screen.queryByText("Private")).toBeNull();
-  });
-
-  it("shows everything once 'For this project' is switched off", async () => {
-    renderPage();
-    await screen.findByText("Fair");
-    fireEvent.click(screen.getByRole("switch", { name: /for this project/i }));
-    expect(await screen.findByText("Private")).toBeInTheDocument();
   });
 
   it("searches entries with no description by name, and the others by description too", async () => {
-    vi.mocked(fetchProjectDimensions).mockResolvedValue([]);
     vi.mocked(fetchToolsDetailed).mockResolvedValue([
       { ...tool(1, "Fair", []), description: null },
       { ...tool(2, "Private", []), description: "Checks fairness of answers" },
@@ -219,28 +208,6 @@ describe("Catalogue page of a project", () => {
     await screen.findByText("Fair");
     fireEvent.focus(window);
     expect(strayFetches()).toEqual([]);
-  });
-
-  it("does not filter, and says so, when the project has no dimensions yet", async () => {
-    vi.mocked(fetchProjectDimensions).mockResolvedValue([]);
-    renderPage();
-    expect(await screen.findByText("Private")).toBeInTheDocument();
-    expect(
-      screen.getByText("No control objectives selected yet: showing everything.")
-    ).toBeInTheDocument();
-  });
-
-  it("says so, and does not claim to filter, when the project's dimensions cannot be loaded", async () => {
-    vi.mocked(fetchProjectDimensions).mockRejectedValue(new Error("network"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    renderPage();
-    expect(await screen.findByText("Private")).toBeInTheDocument();
-    expect(
-      screen.getByText("The project's dimensions could not be loaded: showing everything.")
-    ).toBeInTheDocument();
-    const sw = screen.getByRole("switch", { name: /for this project/i });
-    expect(sw).toHaveAttribute("aria-checked", "false");
-    expect(sw).toHaveAttribute("aria-disabled", "true");
   });
 
   it("shows a test framework on the Tests tab, not the Controls tab", async () => {
@@ -330,7 +297,6 @@ describe("Catalogue page of a project", () => {
       testEntry(13, "Robust", [robustness]),
     ]);
     vi.mocked(fetchTags).mockResolvedValue([robustness, injection, stress]);
-    vi.mocked(fetchProjectDimensions).mockResolvedValue([]);
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /tests/i }));
     fireEvent.click(await screen.findByRole("button", { name: "Technical Robustness and Safety" }));

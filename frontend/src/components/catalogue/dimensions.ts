@@ -23,7 +23,7 @@ function dimensionOf(t: Tag, parents: ReadonlyMap<string, string>): string | nul
 
 /**
  * Whether an entry matches the chosen dimensions and sub-dimensions, the one
- * rule of the sidebar's dimension filter and of "For this project".
+ * rule of the sidebar's dimension filter.
  *
  * Each chosen slug counts for its dimension. A dimension with none of its
  * sub-dimensions chosen matches an entry with that dimension or any of its
