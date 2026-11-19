@@ -21,13 +21,12 @@ How the catalogue fits into AISC is in `docs/architecture.md` of the aisc reposi
   lets an admin update a private copy from the public catalogue (**Update from public**).
 - Filters by the dimensions, sub-dimensions and AI systems of the catalogue's own
   tags, in their order. A sub-dimension chosen under a dimension narrows it to the
-  entries of the chosen sub-dimensions. "For this project" (on by default) keeps
-  the entries of the project's dimensions, a sub-dimension counting for its parent.
-  Local and Installed entries are marked.
+  entries of the chosen sub-dimensions. It shows every entry: no switch limits it to the project's
+  dimensions. Local and Installed entries are marked.
 - Lets an admin give a Local test its dimensions (**Dimensions**, REQ1 to REQ11) in
   its entry, saved with `PUT /api/projects/{slug}/catalogue/local/{package}/dimensions`.
-  They put the test under "For this project" and let step 4's Evidence map link it to
-  objectives of those dimensions.
+  They let step 4's Evidence map link the test to objectives of those dimensions; until an admin
+  gives any, a Local test shows the ones its package declares in `[tool.aisc] dimensions`.
 - Installs from the detail pop-up without leaving the page, through the project's
   dialogs only: a test through the platform's `install-info` and `install`
   endpoints (a test already installed says Installed), a checklist through the
