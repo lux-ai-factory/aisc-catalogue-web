@@ -286,6 +286,18 @@ describe("ToolDetailModal dimensions of a local test", () => {
     expect(screen.queryByRole("group", { name: "Dimensions" })).toBeNull();
   });
 
+  it("is not offered for a local test whose package declares its dimensions, which show as a label", () => {
+    const declared = makeTool({
+      ...localTest([tagOf("diversity-non-discrimination-fairness", "dimension", "Diversity, Non-Discrimination and Fairness")]),
+      aisc_dimensions_declared: true,
+    });
+    showWith(declared, true);
+    expect(screen.queryByRole("group", { name: "Dimensions" })).toBeNull();
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Save dimensions" })).toBeNull();
+    expect(screen.getAllByText("Diversity, Non-Discrimination and Fairness").length).toBeGreaterThan(0);
+  });
+
   it("is not offered for an entry that is not a local test", () => {
     showWith(makeTool({ package_name: "aisc-plugin-x", tags: [tagOf("aesia", "source"), tagOf("test", "type")] }), true);
     expect(screen.queryByRole("group", { name: "Dimensions" })).toBeNull();

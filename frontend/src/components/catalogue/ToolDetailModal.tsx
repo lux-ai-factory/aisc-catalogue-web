@@ -634,7 +634,7 @@ const ToolDetailModal: React.FC<ToolDetailModalProps> = ({
         )}
 
         {/* An admin of a private catalogue gives a local test its dimensions */}
-        {canClassify && isLocalTest(tool) && (
+        {canClassify && isLocalTest(tool) && !tool.aisc_dimensions_declared && (
           <LocalDimensionsEditor tool={tool} onSaved={onDimensionsSaved} />
         )}
 
