@@ -194,11 +194,6 @@ const styles = {
     padding: "4px 0",
     fontWeight: 500 as const,
   },
-  projectNote: {
-    fontSize: "12px",
-    color: "#6c757d",
-    marginBottom: "8px",
-  },
 };
 
 
@@ -226,15 +221,6 @@ interface CatalogueSidebarProps {
   /** "Plugin available" filter, only show tools with a ready-to-use plugin. */
   pluginOnly: boolean;
   onPluginOnlyChange: (v: boolean) => void;
-  /** Project catalogue only: keep the entries that match the project's
-   *  dimensions. `noDimensions` when the project has none selected yet,
-   *  `unavailable` when they could not be loaded (nothing is filtered then). */
-  projectFilter?: {
-    on: boolean;
-    onChange: (v: boolean) => void;
-    noDimensions: boolean;
-    unavailable?: boolean;
-  };
 }
 
 
@@ -247,7 +233,6 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
   onSearchChange,
   pluginOnly,
   onPluginOnlyChange,
-  projectFilter,
 }) => {
   const [expandedDimensions, setExpandedDimensions] = useState<string[]>([]);
   const [showAllAiSystems, setShowAllAiSystems] = useState(false);
@@ -361,41 +346,6 @@ const CatalogueSidebar: React.FC<CatalogueSidebarProps> = ({
         />
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c757d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.searchIcon}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
       </div>
-
-      {/* "For this project": on, it keeps the entries of the project's
-          dimensions. */}
-      {projectFilter && (
-        <>
-          <button
-            type="button"
-            style={{
-              ...styles.pluginToggleRow,
-              ...(projectFilter.unavailable ? { cursor: "default", opacity: 0.5 } : {}),
-            }}
-            onClick={() => projectFilter.onChange(!projectFilter.on)}
-            disabled={projectFilter.unavailable}
-            role="switch"
-            aria-checked={projectFilter.on && !projectFilter.unavailable}
-            aria-disabled={projectFilter.unavailable || undefined}
-            aria-label="For this project"
-          >
-            <span>For this project</span>
-            <span style={styles.toggleTrack(projectFilter.on && !projectFilter.unavailable)}>
-              <span style={styles.toggleKnob(projectFilter.on && !projectFilter.unavailable)} />
-            </span>
-          </button>
-          {projectFilter.unavailable && (
-            <div style={styles.projectNote}>
-              The project&apos;s dimensions could not be loaded: showing everything.
-            </div>
-          )}
-          {projectFilter.noDimensions && (
-            <div style={styles.projectNote}>
-              No control objectives selected yet: showing everything.
-            </div>
-          )}
-        </>
-      )}
 
       {/* "Plugin available" toggle (below the search bar), tests only, since
           only tests have a runnable plugin. */}

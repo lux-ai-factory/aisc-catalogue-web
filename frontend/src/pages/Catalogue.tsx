@@ -8,12 +8,11 @@ import type { SidebarFilters } from "../components/catalogue/CatalogueSidebar";
 import type { Tool, Tag } from "../services/catalogueApi";
 import { fetchToolsDetailed, fetchTags } from "../services/catalogueApi";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { entryKind, isLocalTest } from "../components/catalogue/entry";
+import { entryKind } from "../components/catalogue/entry";
 import { matchesDimensions, subDimensionParents } from "../components/catalogue/dimensions";
 import {
   fetchProjectCatalogue,
   updateFromPublic,
-  fetchProjectDimensions,
 } from "../services/projectCatalogue";
 import { useProjectCatalogue } from "../hooks/useProjectCatalogue";
 
@@ -138,11 +137,6 @@ const Catalogue: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [pluginOnly, setPluginOnly] = useState(false);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
-  // The project's copy, its dimensions, and the "For this project" filter (on
-  // by default).
-  const [projectDimensions, setProjectDimensions] = useState<string[] | null>(null);
-  const [dimensionsFailed, setDimensionsFailed] = useState(false);
-  const [forProject, setForProject] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
 
@@ -188,12 +182,6 @@ const Catalogue: React.FC = () => {
   // The catalogue loads once the platform confirms the project chose one;
   // otherwise the page says why and loads nothing.
   const { info: projectInfo, setInfo: setProjectInfo, stopped } = useProjectCatalogue(() => {
-    fetchProjectDimensions()
-      .then(setProjectDimensions)
-      .catch((err) => {
-        console.error("Failed to load the project's dimensions:", err);
-        setDimensionsFailed(true);
-      });
     loadData();
   });
 
@@ -227,8 +215,7 @@ const Catalogue: React.FC = () => {
   );
 
   // ── Filter tools based on sidebar + search ──
-  // `withProject` false leaves out the "For this project" filter, to tell what that filter alone hides
-  const passes = useCallback((tool: Tool, withProject: boolean) => {
+  const passes = useCallback((tool: Tool) => {
       // "Plugin available" toggle: tests only (controls have no plugin), and
       // only fully-ready tools have a usable plugin.
       if (pluginOnly && filters.tab === "tests" && tool.completion_status !== "full")
@@ -243,13 +230,6 @@ const Catalogue: React.FC = () => {
       }
 
       const toolTags = tool.tags ?? [];
-
-      // "For this project": keep the entries that carry one of the project's
-      // dimensions; a sub-dimension counts for its parent. A project with no
-      // dimensions yet shows everything.
-      if (withProject && forProject && projectDimensions && projectDimensions.length > 0) {
-        if (!matchesDimensions(toolTags, projectDimensions, parents)) return false;
-      }
 
       // The sidebar's dimensions; a sub-dimension chosen under a dimension
       // narrows it to the entries of the chosen sub-dimensions.
@@ -289,16 +269,9 @@ const Catalogue: React.FC = () => {
       if (kind && kind !== filters.tab) return false;
 
       return true;
-  }, [searchQuery, filters, pluginOnly, forProject, projectDimensions, parents]);
+  }, [searchQuery, filters, pluginOnly, parents]);
 
-  const filteredTools = useMemo(() => tools.filter((tool) => passes(tool, true)), [tools, passes]);
-
-  // this stack's local tests that only "For this project" hides: they have none of the project's dimensions
-  // until an admin gives them some, so the page says so instead of leaving them to be found by searching
-  const hiddenLocalTests = useMemo(
-    () => tools.filter((tool) => isLocalTest(tool) && passes(tool, false) && !passes(tool, true)).length,
-    [tools, passes]
-  );
+  const filteredTools = useMemo(() => tools.filter(passes), [tools, passes]);
 
   // ── Render ──
   return (
@@ -322,16 +295,6 @@ const Catalogue: React.FC = () => {
           onSearchChange={setSearchQuery}
           pluginOnly={pluginOnly}
           onPluginOnlyChange={setPluginOnly}
-          projectFilter={
-            projectInfo
-              ? {
-                  on: forProject,
-                  onChange: setForProject,
-                  noDimensions: projectDimensions?.length === 0,
-                  unavailable: dimensionsFailed,
-                }
-              : undefined
-          }
         />
 
         {/* Main content area */}
@@ -396,14 +359,6 @@ const Catalogue: React.FC = () => {
               )}
               {updateMessage && <span>{updateMessage}</span>}
             </div>
-          )}
-
-          {hiddenLocalTests > 0 && (
-            <p style={s.projectRow}>
-              {`${hiddenLocalTests} local ${hiddenLocalTests === 1 ? "test of this stack is" : "tests of this stack are"} `
-                + `hidden by "For this project": they have none of the project's dimensions yet. Switch it off to `
-                + "see them, or give them dimensions in their entry."}
-            </p>
           )}
 
           {/* Content */}

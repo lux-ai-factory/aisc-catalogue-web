@@ -11,9 +11,8 @@ import {
   fetchProjectDimensions,
 } from "../services/projectCatalogue";
 
-// "For this project" is on by default and keeps the entries of the project's dimensions. A local test of this
-// stack has no dimensions until an admin gives it some, so the switch hides it: the page says so, instead of
-// leaving the person to find it by switching the filter off or searching.
+// The catalogue shows every entry. A local test of this stack that has none of the project's dimensions is
+// listed like any other, with no notice about a hidden entry and no project switch.
 
 vi.stubGlobal("fetch", vi.fn());
 
@@ -71,15 +70,6 @@ async function openTestsTab() {
   await screen.findByText("LangBiTe");
 }
 
-/** Whether some element's own text says that local tests are hidden. */
-function saysLocalTestsAreHidden(): boolean {
-  return [...document.body.querySelectorAll("*")].some((el) => {
-    const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ");
-    const text = own.trim() ? own : "";
-    return /local/i.test(text) && /(hidden|not shown|hides)/i.test(text);
-  });
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(projectSlug).mockReturnValue("mijke-the-matchbot");
@@ -88,19 +78,24 @@ beforeEach(() => {
   vi.mocked(fetchTags).mockResolvedValue([]);
 });
 
-describe("Catalogue: local tests hidden by 'For this project'", () => {
-  it("says that 'For this project' hides this stack's local tests", async () => {
+describe("Catalogue: local tests are listed", () => {
+  it("shows a local test with none of the project's dimensions", async () => {
+    vi.mocked(fetchProjectDimensions).mockResolvedValue(["REQ5"]);
+    vi.mocked(fetchToolsDetailed).mockResolvedValue([
+      test(2, "Local Probe", [tag("local", "source")], "aisc-plugin-local-probe"),
+      PUBLIC_FAIRNESS,
+    ]);
+    renderPage();
+    await openTestsTab();
+    expect(screen.getByText("Local Probe")).toBeInTheDocument();
+    expect(screen.queryByText(/hidden by "For this project"/)).toBeNull();
+  });
+
+  it("shows the page of a project without a 'For this project' switch", async () => {
     vi.mocked(fetchToolsDetailed).mockResolvedValue([PUBLIC_FAIRNESS, ...MIJKE_TESTS]);
     renderPage();
     await openTestsTab();
-    expect(screen.queryByText("StrongREJECT (Mijke)")).toBeNull();
-    expect(saysLocalTestsAreHidden(), "a notice that local tests are hidden by the filter").toBe(true);
-  });
-
-  it("says nothing about local tests when none is hidden", async () => {
-    vi.mocked(fetchToolsDetailed).mockResolvedValue([PUBLIC_FAIRNESS]);
-    renderPage();
-    await openTestsTab();
-    expect(saysLocalTestsAreHidden()).toBe(false);
+    expect(screen.queryByRole("switch", { name: /for this project/i })).toBeNull();
+    expect(screen.getByText("StrongREJECT (Mijke)")).toBeInTheDocument();
   });
 });

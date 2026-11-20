@@ -106,6 +106,8 @@ export interface Tool {
   aisc_local?: boolean;
   /** Already installed in the project. */
   aisc_installed?: boolean;
+  /** A local test whose package declares its own dimensions: they are shown, not chosen. */
+  aisc_dimensions_declared?: boolean;
 }
 
 // ─── API functions ───────────────────────────────────────────────────────────

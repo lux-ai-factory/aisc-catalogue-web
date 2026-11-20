@@ -82,23 +82,12 @@ describe("CatalogueSidebar search + plugin filter", () => {
     expect(onPluginOnlyChange).toHaveBeenCalledWith(true);
   });
 
-  it("reaches the switches with the keyboard and flips them with Space", () => {
+  it("reaches the switch with the keyboard and flips it with Space", () => {
     const onPluginOnlyChange = vi.fn();
-    const onChange = vi.fn();
-    render(
-      <CatalogueSidebar
-        {...(baseProps({
-          onPluginOnlyChange,
-          projectFilter: { on: true, onChange, noDimensions: false },
-        }) as any)}
-      />
-    );
-    const project = screen.getByRole("switch", { name: /for this project/i });
+    render(<CatalogueSidebar {...(baseProps({ onPluginOnlyChange }) as any)} />);
     const plugin = screen.getByRole("switch", { name: /plugin available/i });
-    for (const sw of [project, plugin]) expect(sw.tagName).toBe("BUTTON");
-    project.focus();
-    expect(project).toHaveFocus();
-    userEvent.tab();
+    expect(plugin.tagName).toBe("BUTTON");
+    plugin.focus();
     expect(plugin).toHaveFocus();
     userEvent.keyboard(" ");
     expect(onPluginOnlyChange).toHaveBeenCalledWith(true);
@@ -205,35 +194,10 @@ describe("CatalogueSidebar selected filters look selected", () => {
 const controlsProps = (over: Record<string, unknown> = {}) =>
   baseProps({ filters: makeFilters({ tab: "controls" }), ...over });
 
-describe("CatalogueSidebar 'For this project' switch", () => {
-  it("is not shown without the project filter prop", () => {
+describe("CatalogueSidebar without a project switch", () => {
+  it("has no 'For this project' switch", () => {
     render(<CatalogueSidebar {...(controlsProps() as any)} />);
-    expect(screen.queryByText("For this project")).toBeNull();
-  });
-
-  it("shows the switch and reports a flip", () => {
-    const onChange = vi.fn();
-    render(
-      <CatalogueSidebar
-        {...(controlsProps({ projectFilter: { on: true, onChange, noDimensions: false } }) as any)}
-      />
-    );
-    const sw = screen.getByRole("switch", { name: /for this project/i });
-    expect(sw).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(sw);
-    expect(onChange).toHaveBeenCalledWith(false);
-    expect(screen.queryByText(/No control objectives selected yet/)).toBeNull();
-  });
-
-  it("notes that everything shows when the project has no dimensions yet", () => {
-    render(
-      <CatalogueSidebar
-        {...(controlsProps({ projectFilter: { on: true, onChange: vi.fn(), noDimensions: true } }) as any)}
-      />
-    );
-    expect(
-      screen.getByText("No control objectives selected yet: showing everything.")
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /for this project/i })).toBeNull();
   });
 });
 

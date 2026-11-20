@@ -80,7 +80,7 @@ describe("matchesDimensions", () => {
     expect(match(withStress, ["prompt-injection"])).toBe(false);
   });
 
-  it("is the 'For this project' rule too: a sub-dimension counts for its parent", () => {
+  it("counts a sub-dimension for its parent dimension", () => {
     expect(match(withConsent, ["human-agency-oversight"])).toBe(true);
     expect(match(withConsent, ["privacy-data-governance"])).toBe(false);
     expect(match(withInjection, ["transparency", ROBUSTNESS])).toBe(true);
