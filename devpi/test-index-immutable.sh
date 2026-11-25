@@ -43,7 +43,7 @@ volatile() { docker exec "$NAME" curl -sf -H "Accept: application/json" "http://
   | grep -o '"volatile": *[a-z]*' | grep -o '[a-z]*$'; }
 # upload <body>: tiny-0.1 as an sdist whose PKG-INFO carries <body>, uploaded as root; fails when refused
 upload() {
-  docker exec "$NAME" sh -c "cd /tmp && rm -rf tiny-0.1 tiny-0.1.tar.gz && mkdir tiny-0.1 \
+  docker exec -e DEVPI_CLIENTDIR=/tmp/devpi-client "$NAME" sh -c "cd /tmp && rm -rf tiny-0.1 tiny-0.1.tar.gz && mkdir tiny-0.1 \
     && printf 'Metadata-Version: 1.0\nName: tiny\nVersion: 0.1\nSummary: $1\n' > tiny-0.1/PKG-INFO \
     && tar czf tiny-0.1.tar.gz tiny-0.1 && devpi use http://127.0.0.1:3141/root/public >/dev/null \
     && devpi login root --password '$PW' >/dev/null && devpi upload tiny-0.1.tar.gz >/dev/null 2>&1"
@@ -62,7 +62,7 @@ fi
 [ "$(served_sha256)" = "$before" ] || fail "the file the index serves for tiny 0.1 changed"
 
 # a volume an earlier image left with a volatile index
-docker exec "$NAME" sh -c "devpi use http://127.0.0.1:3141/root/public >/dev/null \
+docker exec -e DEVPI_CLIENTDIR=/tmp/devpi-client "$NAME" sh -c "devpi use http://127.0.0.1:3141/root/public >/dev/null \
   && devpi login root --password '$PW' >/dev/null && devpi index root/public volatile=True >/dev/null"
 start || { echo "FAIL: did not restart" >&2; exit 1; }
 [ "$(volatile)" = false ] || fail "a volatile root/public stays volatile after a restart"

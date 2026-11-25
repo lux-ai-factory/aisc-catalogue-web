@@ -35,7 +35,7 @@ cleanup() {
   [ -n "${SAMPLER:-}" ] && kill "$SAMPLER" 2>/dev/null || true
   docker rm -f "$NAME" "$PROBE" >/dev/null 2>&1 || true
   # the server's files in the bind-mounted directory are root's: removed from a container
-  [ -d "$WORK/bind" ] && docker run --rm -v "$WORK/bind:/d" --entrypoint sh "$TAG" -c 'rm -rf /d/* /d/.[!.]*' >/dev/null 2>&1
+  [ -d "$WORK/bind" ] && docker run --rm --user 0 -v "$WORK/bind:/d" --entrypoint sh "$TAG" -c 'rm -rf /d/* /d/.[!.]*' >/dev/null 2>&1
   true
   docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
@@ -75,7 +75,8 @@ start() {
     sleep 1
   done
 }
-login() { docker exec "$NAME" sh -c "devpi use http://127.0.0.1:3141 >/dev/null && devpi login root --password '$1' >/dev/null 2>&1"; }
+# the client runs as the image's unprivileged user, whose home does not exist: it keeps its state in /tmp
+login() { docker exec -e DEVPI_CLIENTDIR=/tmp/devpi-client "$NAME" sh -c "devpi use http://127.0.0.1:3141 >/dev/null && devpi login root --password '$1' >/dev/null 2>&1"; }
 # has_index [<index>]: root/public unless named
 has_index() { docker exec "$NAME" curl -sf -o /dev/null "http://127.0.0.1:3141/${1:-root/public}/+simple/"; }
 # reach <host:port>: whether devpi answers there from another container on the network
@@ -129,7 +130,9 @@ docker rm -f "$NAME" >/dev/null
 docker run --rm --user 0 -v "$VOL:/data" --entrypoint chown "$TAG" -R 0:0 /data
 [ -z "$(docker run --rm --user 0 -v "$VOL:/data" --entrypoint find "$TAG" /data ! -user 0)" ] \
   || fail "the volume was not made root's"
-start "s3cret" || fail "did not start on a volume whose files are root's"
+# the image starts as its own user and the stack's devpi-data-owner hands such a volume over; started as root, as here,
+# the entrypoint does the same itself
+LISTEN="--user 0" start "s3cret" || fail "did not start on a volume whose files are root's"
 has_index || fail "root/public missing on a volume whose files were root's"
 login "s3cret" || fail "root does not open with DEVPI_ROOT_PASSWORD on a volume whose files were root's"
 not_root
@@ -137,7 +140,7 @@ not_root
 REPAIRED="devpi: root's password in this volume was not this install's; reset it to DEVPI_ROOT_PASSWORD (packages kept)"
 # upload_tiny <password>: a small sdist, tiny-0.1, uploaded to root/public as root
 upload_tiny() {
-  docker exec "$NAME" sh -c "cd /tmp && mkdir -p tiny-0.1 && printf 'Metadata-Version: 1.0\nName: tiny\nVersion: 0.1\n' > tiny-0.1/PKG-INFO \
+  docker exec -e DEVPI_CLIENTDIR=/tmp/devpi-client "$NAME" sh -c "cd /tmp && mkdir -p tiny-0.1 && printf 'Metadata-Version: 1.0\nName: tiny\nVersion: 0.1\n' > tiny-0.1/PKG-INFO \
     && tar czf tiny-0.1.tar.gz tiny-0.1 && devpi use http://127.0.0.1:3141/root/public >/dev/null \
     && devpi login root --password '$1' >/dev/null && devpi upload tiny-0.1.tar.gz >/dev/null"
 }
@@ -242,7 +245,8 @@ docker logs "$NAME" 2>&1 | grep -q "devpi ready" && fail "a stop during the setu
 # an empty directory from the host holds none of the data the image was built with
 mkdir "$WORK/bind"
 DATA="$WORK/bind"
-start "s3cret" || fail "did not start on an empty bind-mounted directory"
+# a directory the host made is not the devpi user's: started as root, the entrypoint hands it over
+LISTEN="--user 0" start "s3cret" || fail "did not start on an empty bind-mounted directory"
 has_index || fail "root/public missing on a bind-mounted directory"
 not_root
 DATA=
